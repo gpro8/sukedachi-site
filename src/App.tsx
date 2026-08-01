@@ -413,7 +413,7 @@ function DetailPanel({
     user && beneficiary && user.toLowerCase() === beneficiary.toLowerCase();
 
   const pct =
-    kind === "crowdfund" && goalOrSoft > 0n
+    goalOrSoft > 0n
       ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
       : 0;
 
@@ -449,7 +449,7 @@ function DetailPanel({
           <div
             className="bar-fill"
             style={{
-              width: `${kind === "crowdfund" ? pct : Math.min(100, Number(raised > 0n ? 40 : 0))}%`,
+              width: `${pct}%`,
             }}
           />
         </div>
@@ -460,7 +460,7 @@ function DetailPanel({
               <> / 目標 {formatUnits(goalOrSoft, 18)}</>
             )}
             {kind === "charity" && goalOrSoft > 0n && (
-              <> · 希望 {formatUnits(goalOrSoft, 18)}</>
+              <> / 希望 {formatUnits(goalOrSoft, 18)}{pct >= 100 ? " · 到達" : ""}</>
             )}
           </span>
           <span>
