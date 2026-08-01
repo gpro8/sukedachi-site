@@ -6,14 +6,24 @@ import { wagmiConfig } from "./wagmi";
 import App from "./App";
 import "./styles.css";
 
-// 七宝 pattern — BASE_URL-safe for GitHub project Pages (base: ./)
-const shippo = `${import.meta.env.BASE_URL}patterns/shippo.svg`.replace(
-  /([^:]\/)\/+/g,
-  "$1"
-);
+/**
+ * 七宝 pattern URL must be absolute.
+ * Relative urls inside CSS custom properties resolve against the *stylesheet*
+ * (…/assets/*.css), not the page — so "./patterns/…" becomes assets/patterns/ and 404s on GH Pages.
+ */
+function shippoBackgroundUrl(): string {
+  try {
+    // From bundled JS at …/assets/index-*.js → …/patterns/shippo.svg
+    return new URL("../patterns/shippo.svg", import.meta.url).href;
+  } catch {
+    const base = window.location.href.replace(/\/?([^/]*\.[^/]*)?$/, "/");
+    return new URL("patterns/shippo.svg", base).href;
+  }
+}
+
 document.documentElement.style.setProperty(
   "--shippo-bg",
-  `url("${shippo}")`
+  `url("${shippoBackgroundUrl()}")`
 );
 
 const qc = new QueryClient();
