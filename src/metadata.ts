@@ -1,5 +1,11 @@
 /** Free-forever campaign metadata: form → data:application/json;base64 URI */
 
+import { buildCoverDataUri, type CoverKind } from "./cover";
+import {
+  MAX_IMAGE_FIELD_CHARS,
+  MAX_METADATA_URI_CHARS,
+} from "./imagePrep";
+
 export type CampaignMeta = {
   name?: string;
   description?: string;
@@ -32,12 +38,25 @@ export function buildMetadataDataUri(input: {
   title: string;
   description: string;
   returnText?: string;
-  imageUrl?: string;
+  /** https URL, data:image/…, or empty → auto cover */
+  image?: string;
+  kind?: CoverKind;
 }): string {
   const name = input.title.trim().slice(0, TITLE_MAX);
   const description = input.description.trim().slice(0, DESC_MAX);
-  const image = (input.imageUrl || "").trim().slice(0, IMAGE_URL_MAX);
   const ret = (input.returnText || "").trim().slice(0, RETURN_MAX);
+
+  let image = (input.image || "").trim();
+  if (!image) {
+    image = buildCoverDataUri({ title: name, kind: input.kind });
+  } else if (image.startsWith("data:image/")) {
+    if (image.length > MAX_IMAGE_FIELD_CHARS) {
+      // Safety: fall back rather than produce unusable tx
+      image = buildCoverDataUri({ title: name, kind: input.kind });
+    }
+  } else {
+    image = image.slice(0, IMAGE_URL_MAX);
+  }
 
   const attributes: { trait_type: string; value: string }[] = [];
   if (ret) attributes.push({ trait_type: "Return", value: ret });
@@ -45,19 +64,29 @@ export function buildMetadataDataUri(input: {
   const json: Record<string, unknown> = {
     name,
     description,
+    image,
   };
-  if (image) json.image = image;
   if (attributes.length) json.attributes = attributes;
 
   const raw = JSON.stringify(json);
-  return `data:application/json;base64,${utf8ToBase64(raw)}`;
+  const uri = `data:application/json;base64,${utf8ToBase64(raw)}`;
+  if (uri.length > MAX_METADATA_URI_CHARS) {
+    // Drop custom image, keep generated cover only
+    const slim = {
+      name,
+      description,
+      image: buildCoverDataUri({ title: name, kind: input.kind }),
+      ...(attributes.length ? { attributes } : {}),
+    };
+    return `data:application/json;base64,${utf8ToBase64(JSON.stringify(slim))}`;
+  }
+  return uri;
 }
 
 export function parseMetadataUri(uri: string): CampaignMeta | null {
   if (!uri) return null;
   const t = uri.trim();
 
-  // data:application/json;base64,...
   if (t.startsWith("data:application/json")) {
     try {
       const comma = t.indexOf(",");
@@ -73,7 +102,6 @@ export function parseMetadataUri(uri: string): CampaignMeta | null {
     }
   }
 
-  // data:application/json,... (raw)
   if (t.startsWith("data:") && t.includes("json")) {
     try {
       const comma = t.indexOf(",");
@@ -113,7 +141,7 @@ function normalizeMeta(j: Record<string, unknown>): CampaignMeta {
 export function validateCreateForm(input: {
   title: string;
   description: string;
-  imageUrl?: string;
+  image?: string;
 }): string | null {
   if (!input.title.trim()) return "タイトルを入力してください";
   if (input.title.trim().length > TITLE_MAX)
@@ -121,11 +149,16 @@ export function validateCreateForm(input: {
   if (!input.description.trim()) return "説明を入力してください";
   if (input.description.trim().length > DESC_MAX)
     return `説明は${DESC_MAX}文字以内`;
-  const img = (input.imageUrl || "").trim();
+  const img = (input.image || "").trim();
   if (img) {
-    if (img.length > IMAGE_URL_MAX) return "画像URLが長すぎます";
-    if (!/^https:\/\//i.test(img) && !/^ipfs:\/\//i.test(img)) {
-      return "画像は https:// または ipfs:// のURLにしてください";
+    if (img.startsWith("data:image/")) {
+      if (img.length > MAX_IMAGE_FIELD_CHARS) {
+        return "画像が大きすぎます。別の画像か自動カバーをご利用ください";
+      }
+    } else if (img.startsWith("https://") || img.startsWith("ipfs://")) {
+      if (img.length > IMAGE_URL_MAX) return "画像URLが長すぎます";
+    } else if (!img.startsWith("http://")) {
+      return "画像はアップロード、https://、または自動カバーを使ってください";
     }
   }
   return null;

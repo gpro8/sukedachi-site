@@ -31,6 +31,9 @@ import {
   RETURN_MAX,
   type CampaignMeta,
 } from "./metadata";
+import { SafeImage } from "./SafeImage";
+import { buildCoverDataUri } from "./cover";
+import { prepareImageFile } from "./imagePrep";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -86,6 +89,8 @@ function fmtLeft(sec: number) {
 
 function resolveImageUrl(uri?: string): string {
   if (!uri) return "";
+  // Already embeddable forever
+  if (uri.startsWith("data:image/")) return uri;
   if (uri.startsWith("ipfs://")) {
     return `https://gateway.pinata.cloud/ipfs/${uri.slice(7)}`;
   }
@@ -183,11 +188,12 @@ function CampaignCard({
       onClick={onSelect}
     >
       <div className="card-cover">
-        {meta.image ? (
-          <img src={meta.image} alt="" />
-        ) : (
-          <div className="placeholder">助</div>
-        )}
+        <SafeImage
+          src={meta.image}
+          title={title}
+          kind={kind}
+          className=""
+        />
         <div className="card-cover-badge">
           <span className={`pill ${kind}`}>{label}</span>
           <span className={`pill status-${status.tone}`}>{status.text}</span>
@@ -425,9 +431,12 @@ function DetailPanel({
         ← 一覧
       </button>
       <div className="detail-head">
-        {meta.image && (
-          <img src={meta.image} alt="" className="detail-cover" />
-        )}
+        <SafeImage
+          src={meta.image}
+          title={title}
+          kind={kind}
+          className="detail-cover"
+        />
         <div className="card-tags" style={{ marginBottom: "0.35rem" }}>
           <span className={`pill ${kind}`}>{kindLabel(kind)}</span>
           <span className={`pill status-${lotStatus.tone}`}>{lotStatus.text}</span>
@@ -616,7 +625,11 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [returnText, setReturnText] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  /** Final image for metadata: data URI (upload/cover) or https */
+  const [imageField, setImageField] = useState("");
+  const [imageMode, setImageMode] = useState<"auto" | "file" | "url">("auto");
+  const [imageNote, setImageNote] = useState<string | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uriOverride, setUriOverride] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -624,6 +637,14 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   useEffect(() => {
     if (user && !beneficiary) setBeneficiary(user);
   }, [user, beneficiary]);
+
+  const previewSrc = useMemo(() => {
+    if (imageField) return imageField;
+    return buildCoverDataUri({
+      title: title || "旗揚げ",
+      kind: mode === "charity" ? "charity" : "crowdfund",
+    });
+  }, [imageField, title, mode]);
 
   const { data: minGoal } = useReadContract({
     address: FACTORY_ADDRESS,
@@ -642,6 +663,29 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
     }
   }, [isSuccess, onCreated, reset]);
 
+  const onPickFile = async (file: File | null) => {
+    if (!file) return;
+    setImageBusy(true);
+    setImageNote(null);
+    const prep = await prepareImageFile(file);
+    setImageBusy(false);
+    if (!prep.ok) {
+      setImageNote(prep.error);
+      return;
+    }
+    setImageMode("file");
+    setImageField(prep.dataUri);
+    setImageNote(
+      `画像を圧縮してオンチェーン保存します（約 ${Math.round(prep.bytesApprox / 1024)} KB）· 外部ホスト不要`
+    );
+  };
+
+  const clearImage = () => {
+    setImageMode("auto");
+    setImageField("");
+    setImageNote("タイトルから和色カバーを自動生成します（永続・無料）");
+  };
+
   const submit = async () => {
     try {
       setMsg(null);
@@ -658,7 +702,11 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
 
       let metadataURI = uriOverride.trim();
       if (!metadataURI) {
-        const err = validateCreateForm({ title, description, imageUrl });
+        const err = validateCreateForm({
+          title,
+          description,
+          image: imageField,
+        });
         if (err) {
           setMsg(err);
           return;
@@ -667,12 +715,12 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
           title,
           description,
           returnText,
-          imageUrl,
+          image: imageField,
+          kind: mode === "charity" ? "charity" : "crowdfund",
         });
       }
 
       const duration = BigInt(Math.max(1, Math.floor(Number(days) * 86400)));
-      // Min duration factory is 1 hour
       const durSec = duration < 3600n ? 3600n : duration;
 
       if (mode === "crowdfund") {
@@ -713,8 +761,8 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
     <section className="create">
       <h2>旗を揚げる</h2>
       <p className="hint">
-        タイトル・説明はフォームから自動でオンチェーン保存（data URI）。
-        有料ピン留め不要です。画像は https のURLを貼ってください。
+        タイトル・説明はオンチェーン保存（data URI）。画像は<strong>自動和色カバー</strong>
+        （永続無料）が既定。任意でファイルを圧縮して一緒に保存できます。外部ピン留め不要です。
       </p>
       <div className="mode-toggle">
         <button
@@ -762,18 +810,56 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
           placeholder="例: お礼の一筆 / 限定ステッカー など"
         />
       </label>
-      <label className="field">
-        <span>画像URL（任意・https）</span>
+
+      <div className="field">
+        <span>カバー画像</span>
+        <div className="image-actions">
+          <label className="btn file-btn">
+            {imageBusy ? "処理中…" : "ファイルを選ぶ"}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              disabled={imageBusy}
+              onChange={(e) => onPickFile(e.target.files?.[0] || null)}
+            />
+          </label>
+          <button type="button" className="btn ghost" onClick={clearImage}>
+            自動カバー
+          </button>
+        </div>
+        <p className="field-hint">
+          既定: タイトルから<strong>和色カバーを自動生成</strong>（チェーンに保存・期限なし）。
+          ファイルはブラウザで圧縮し metadata に埋め込みます（ガス上限内）。
+        </p>
+        {imageNote && <p className="field-hint ok">{imageNote}</p>}
         <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://…"
+          value={
+            imageMode === "url" || imageField.startsWith("http")
+              ? imageField
+              : ""
+          }
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            if (!v) {
+              clearImage();
+              return;
+            }
+            setImageMode("url");
+            setImageField(v);
+            setImageNote(
+              "外部URLは消えることがあります。壊れたら自動カバーに切り替わります。"
+            );
+          }}
+          placeholder="（任意・非推奨）https:// 外部URL"
           spellCheck={false}
+          style={{ marginTop: "0.45rem" }}
         />
-      </label>
-      {imageUrl.trim().startsWith("https") && (
-        <img src={imageUrl.trim()} alt="" className="create-preview" />
-      )}
+        <img src={previewSrc} alt="" className="create-preview" />
+        <span className="field-hint">
+          プレビュー · {imageMode === "auto" ? "自動カバー" : imageMode === "file" ? "アップロード" : "URL"}
+        </span>
+      </div>
 
       {mode === "crowdfund" ? (
         <label className="field">
