@@ -4,14 +4,17 @@ import factoryAbi from "./abi/SukedachiFactory.json";
 import crowdfundAbi from "./abi/SukedachiCrowdfund.json";
 import charityAbi from "./abi/SukedachiCharity.json";
 import erc20Abi from "./abi/MockJPYC.json";
+import profileAbi from "./abi/SukedachiProfile.json";
 
-/** Polygon Amoy (80002) — Phase 2 */
+/** Polygon Amoy (80002) — clone factory v2 */
 export const CHAIN = polygonAmoy;
 
 export const FACTORY_ADDRESS =
-  "0xBE58e02115F053F9e90f6936CFFB4c05b335c70B" as Address;
+  "0x4290d1C5252E62EF2633EB1adB4584De3EEbE0CD" as Address;
 export const JPYC_ADDRESS =
   "0x996727D565dFC452491f961Ad370fe3F0B5dD124" as Address;
+export const PROFILE_ADDRESS =
+  "0x483eFE8068159B2EB7392517e6Dd54C2a826c2AD" as Address;
 
 /** Future mainnet official JPYC (do not use on Amoy UI) */
 export const MAINNET_JPYC =
@@ -21,6 +24,7 @@ export const FACTORY_ABI = factoryAbi as any;
 export const CROWDFUND_ABI = crowdfundAbi as any;
 export const CHARITY_ABI = charityAbi as any;
 export const ERC20_ABI = erc20Abi as any;
+export const PROFILE_ABI = profileAbi as any;
 
 export const RPC_URL =
   (import.meta.env.VITE_RPC_URL as string | undefined) ||

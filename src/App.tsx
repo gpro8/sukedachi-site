@@ -19,6 +19,8 @@ import {
   FACTORY_ABI,
   FACTORY_ADDRESS,
   JPYC_ADDRESS,
+  PROFILE_ABI,
+  PROFILE_ADDRESS,
   arweaveToHttp,
   shortAddr,
 } from "./config";
@@ -34,6 +36,14 @@ import {
 import { SafeImage } from "./SafeImage";
 import { buildCoverDataUri } from "./cover";
 import { prepareImageFile } from "./imagePrep";
+import {
+  avatarSrc,
+  emptyProfile,
+  hasDisplayProfile,
+  keyAddr,
+  profileDisplayName,
+  type UserProfile,
+} from "./profile";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -132,6 +142,44 @@ async function loadMeta(uri: string): Promise<Meta> {
   return {};
 }
 
+function CreatorChip({
+  address,
+  profile,
+  compact,
+}: {
+  address?: Address;
+  profile?: UserProfile;
+  compact?: boolean;
+}) {
+  if (!address) return null;
+  const show = hasDisplayProfile(profile);
+  const name = profileDisplayName(profile, address);
+  return (
+    <span className={`creator-chip ${compact ? "compact" : ""}`} title={address}>
+      <img src={avatarSrc(profile, address)} alt="" className="creator-av" />
+      <span className="creator-name">{show ? name : shortAddr(address)}</span>
+    </span>
+  );
+}
+
+function useProfile(address?: Address) {
+  const { data, refetch } = useReadContract({
+    address: PROFILE_ADDRESS,
+    abi: PROFILE_ABI,
+    functionName: "profileOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address, refetchInterval: 20_000 },
+  });
+  const profile: UserProfile = useMemo(() => {
+    if (!data || !Array.isArray(data)) return emptyProfile();
+    return {
+      name: String(data[0] || ""),
+      imageURI: String(data[1] || ""),
+    };
+  }, [data]);
+  return { profile, refetch };
+}
+
 function CampaignCard({
   address,
   kind,
@@ -150,6 +198,7 @@ function CampaignCard({
       { address, abi, functionName: "totalRaised" },
       { address, abi, functionName: "deadline" },
       { address, abi, functionName: "state" },
+      { address, abi, functionName: "creator" },
       ...(kind === "crowdfund"
         ? ([{ address, abi, functionName: "goal" }] as const)
         : ([{ address, abi, functionName: "softGoal" }] as const)),
@@ -161,7 +210,9 @@ function CampaignCard({
   const raised = (data?.[1]?.result as bigint) ?? 0n;
   const deadline = Number((data?.[2]?.result as bigint) ?? 0n);
   const state = Number((data?.[3]?.result as number) ?? 0);
-  const goalOrSoft = (data?.[4]?.result as bigint) ?? 0n;
+  const creator = data?.[4]?.result as Address | undefined;
+  const goalOrSoft = (data?.[5]?.result as bigint) ?? 0n;
+  const { profile: creatorProfile } = useProfile(creator);
   const [meta, setMeta] = useState<Meta>({});
   const now = useNow();
 
@@ -201,6 +252,11 @@ function CampaignCard({
       </div>
       <div className="card-body">
         <h3>{title}</h3>
+        {creator && (
+          <div className="card-creator">
+            <CreatorChip address={creator} profile={creatorProfile} compact />
+          </div>
+        )}
         <div className="card-stats">
           <span>
             {formatUnits(raised, 18)}
@@ -239,6 +295,7 @@ function DetailPanel({
       { address, abi, functionName: "deadline" },
       { address, abi, functionName: "state" },
       { address, abi, functionName: "beneficiary" },
+      { address, abi, functionName: "creator" },
       { address, abi, functionName: "isLive" },
       ...(kind === "crowdfund"
         ? [
@@ -276,10 +333,12 @@ function DetailPanel({
   const deadline = Number((data?.[2]?.result as bigint) ?? 0n);
   const state = Number((data?.[3]?.result as number) ?? 0);
   const beneficiary = data?.[4]?.result as Address | undefined;
-  const live = Boolean(data?.[5]?.result);
-  const goalOrSoft = (data?.[6]?.result as bigint) ?? 0n;
+  const creator = data?.[5]?.result as Address | undefined;
+  const live = Boolean(data?.[6]?.result);
+  const goalOrSoft = (data?.[7]?.result as bigint) ?? 0n;
   const myPledge =
-    kind === "crowdfund" ? ((data?.[7]?.result as bigint) ?? 0n) : 0n;
+    kind === "crowdfund" ? ((data?.[8]?.result as bigint) ?? 0n) : 0n;
+  const { profile: creatorProfile } = useProfile(creator);
 
   const [meta, setMeta] = useState<Meta>({});
   const [amount, setAmount] = useState("100");
@@ -442,6 +501,12 @@ function DetailPanel({
           <span className={`pill status-${lotStatus.tone}`}>{lotStatus.text}</span>
         </div>
         <h2>{title}</h2>
+        {creator && (
+          <div className="detail-creator">
+            <span className="muted">旗手</span>{" "}
+            <CreatorChip address={creator} profile={creatorProfile} />
+          </div>
+        )}
         {meta.description && (
           <p className="desc">{meta.description}</p>
         )}
@@ -610,6 +675,209 @@ function DetailPanel({
           </a>
         </p>
       )}
+    </section>
+  );
+}
+
+function MyPagePanel({
+  onOpenCampaign,
+}: {
+  onOpenCampaign: (addr: Address, kind: Kind) => void;
+}) {
+  const { address: user, isConnected, chainId } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { profile, refetch } = useProfile(user);
+  const [name, setName] = useState("");
+  const [imageURI, setImageURI] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setName(profile.name);
+    setImageURI(profile.imageURI);
+  }, [profile.name, profile.imageURI]);
+
+  const { data: myCamps, refetch: refetchMine } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: "getCampaignsByCreator",
+    args: user ? [user] : undefined,
+    query: { enabled: !!user, refetchInterval: 12_000 },
+  });
+
+  const mine = (myCamps as Address[] | undefined) || [];
+
+  const { data: kindProbes } = useReadContracts({
+    contracts: mine.flatMap((a) => [
+      { address: a, abi: CROWDFUND_ABI, functionName: "goal" },
+      { address: a, abi: CHARITY_ABI, functionName: "softGoal" },
+    ]) as any,
+    query: { enabled: mine.length > 0 },
+  });
+
+  const kinds: Kind[] = useMemo(() => {
+    if (!kindProbes) return mine.map(() => "unknown" as Kind);
+    return mine.map((_, i) => {
+      if (kindProbes[i * 2]?.status === "success") return "crowdfund";
+      if (kindProbes[i * 2 + 1]?.status === "success") return "charity";
+      return "unknown";
+    });
+  }, [mine, kindProbes]);
+
+  const { writeContractAsync } = useWriteContract();
+
+  const onSaveProfile = async () => {
+    try {
+      setMsg(null);
+      setBusy(true);
+      if (!isConnected || !user) {
+        setMsg("ウォレットを接続してください");
+        return;
+      }
+      if (chainId !== CHAIN.id) {
+        switchChain?.({ chainId: CHAIN.id });
+        setMsg("Amoy に切替後もう一度");
+        return;
+      }
+      const n = name.trim();
+      if (n.length > 32) {
+        setMsg("表示名は32文字以内");
+        return;
+      }
+      if (imageURI.length > 12000) {
+        setMsg("画像データが大きすぎます");
+        return;
+      }
+      setMsg("プロフィール保存中…");
+      const hash = await writeContractAsync({
+        address: PROFILE_ADDRESS,
+        abi: PROFILE_ABI,
+        functionName: "setProfile",
+        args: [n, imageURI],
+        chainId: CHAIN.id,
+      } as any);
+      setMsg(`保存しました ${String(hash).slice(0, 10)}…`);
+      refetch();
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "エラー");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onPickPfp = async (file: File | null) => {
+    if (!file) return;
+    setBusy(true);
+    const prep = await prepareImageFile(file, 10_000);
+    setBusy(false);
+    if (!prep.ok) {
+      setMsg(prep.error);
+      return;
+    }
+    setImageURI(prep.dataUri);
+    setMsg("画像を圧縮しました · 保存でオンチェーンに反映");
+  };
+
+  if (!isConnected) {
+    return (
+      <section className="mypage surface">
+        <h2>マイページ</h2>
+        <p className="hint">ウォレット接続でプロフィールと自分の旗揚げを表示します。</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="mypage">
+      <div className="surface mypage-profile">
+        <h2>プロフィール</h2>
+        <p className="hint">
+          表示名とアイコンはオンチェーン（無料・永続）。カード／詳細／ヘッダーに出ます。
+          未設定ならアドレス表示のみ。
+        </p>
+        <div className="mypage-preview">
+          <CreatorChip address={user} profile={{ name, imageURI }} />
+          <span className="muted">{shortAddr(user)}</span>
+        </div>
+        <label className="field">
+          <span>表示名（最大32字）</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={32}
+            placeholder="例: 武者太郎"
+          />
+        </label>
+        <div className="field">
+          <span>アイコン</span>
+          <div className="image-actions">
+            <label className="btn file-btn">
+              {busy ? "処理中…" : "画像を選ぶ"}
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                disabled={busy}
+                onChange={(e) => onPickPfp(e.target.files?.[0] || null)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setImageURI("")}
+            >
+              クリア
+            </button>
+          </div>
+          {(imageURI || user) && (
+            <img
+              src={avatarSrc({ name, imageURI }, user)}
+              alt=""
+              className="pfp-preview"
+            />
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={busy}
+          onClick={onSaveProfile}
+        >
+          {busy ? "処理中…" : "プロフィールを保存"}
+        </button>
+        {msg && <p className="status">{msg}</p>}
+      </div>
+
+      <div className="surface mypage-list">
+        <div className="mypage-list-head">
+          <h2>自分の旗揚げ</h2>
+          <button type="button" className="linkish" onClick={() => refetchMine()}>
+            更新
+          </button>
+        </div>
+        {mine.length === 0 ? (
+          <p className="hint">まだ旗がありません。「旗を揚げる」から作成できます。</p>
+        ) : (
+          <div className="grid">
+            {mine
+              .slice()
+              .reverse()
+              .map((a, idx) => {
+                const i = mine.length - 1 - idx;
+                const k = kinds[i] === "unknown" ? "crowdfund" : kinds[i];
+                return (
+                  <CampaignCard
+                    key={a}
+                    address={a}
+                    kind={k}
+                    selected={false}
+                    onSelect={() => onOpenCampaign(a, k)}
+                  />
+                );
+              })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -981,12 +1249,20 @@ export default function App() {
   }, [addresses, kindProbes]);
 
   const [selected, setSelected] = useState<Address | null>(null);
-  const [tab, setTab] = useState<"list" | "create">("list");
+  const [selectedKindOverride, setSelectedKindOverride] = useState<Kind | null>(
+    null
+  );
+  const [tab, setTab] = useState<"list" | "create" | "me">("list");
+  const { profile: myProfile } = useProfile(address);
 
-  const selectedKind =
-    selected != null
-      ? kinds[addresses.indexOf(selected)] || "crowdfund"
-      : "crowdfund";
+  const selectedKind: Kind = useMemo(() => {
+    if (selectedKindOverride) return selectedKindOverride;
+    if (selected != null) {
+      const k = kinds[addresses.indexOf(selected)];
+      if (k && k !== "unknown") return k;
+    }
+    return "crowdfund";
+  }, [selectedKindOverride, selected, kinds, addresses]);
 
   return (
     <div className="page">
@@ -1015,8 +1291,15 @@ export default function App() {
               ウォレット接続
             </button>
           ) : (
-            <button className="btn ghost" onClick={() => disconnect()}>
-              {shortAddr(address)}
+            <button
+              className="btn ghost header-user"
+              onClick={() => {
+                setTab("me");
+                setSelected(null);
+              }}
+              title="マイページ"
+            >
+              <CreatorChip address={address} profile={myProfile} compact />
             </button>
           )}
         </nav>
@@ -1049,6 +1332,16 @@ export default function App() {
         >
           旗を揚げる
         </button>
+        <button
+          type="button"
+          className={tab === "me" ? "on" : ""}
+          onClick={() => {
+            setTab("me");
+            setSelected(null);
+          }}
+        >
+          マイページ
+        </button>
       </div>
 
       {tab === "create" ? (
@@ -1059,11 +1352,22 @@ export default function App() {
             setTab("list");
           }}
         />
+      ) : tab === "me" ? (
+        <MyPagePanel
+          onOpenCampaign={(addr, kind) => {
+            setSelected(addr);
+            setSelectedKindOverride(kind === "unknown" ? "crowdfund" : kind);
+            setTab("list");
+          }}
+        />
       ) : selected ? (
         <DetailPanel
           address={selected}
           kind={selectedKind === "unknown" ? "crowdfund" : selectedKind}
-          onBack={() => setSelected(null)}
+          onBack={() => {
+            setSelected(null);
+            setSelectedKindOverride(null);
+          }}
         />
       ) : (
         <section className="list">
@@ -1071,6 +1375,10 @@ export default function App() {
             仲間の<strong>旗揚げ</strong>に tJPYC で加勢する場。
             <strong>皆済</strong>は目標未達なら返金、
             <strong>義援</strong>は期間内の All-in です。
+            <br />
+            <span className="muted">
+              工場 v2（EIP-1167 clones）· 新規作成はガスが安いです。
+            </span>
           </p>
           {addresses.length === 0 ? (
             <p className="hint">
