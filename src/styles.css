@@ -408,6 +408,26 @@ a {
 .mypage-list-head h2 {
   margin: 0;
 }
+.short-status {
+  max-height: 4.5rem;
+  overflow: hidden;
+  word-break: break-word;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.status-err {
+  color: #9b2c2c;
+}
+.status-ok {
+  color: #2f6b3a;
+}
+.status-info {
+  color: var(--muted);
+}
+.gas-hint {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+}
 
 .card-cover-badge {
   position: absolute;

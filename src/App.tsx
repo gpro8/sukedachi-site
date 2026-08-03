@@ -35,7 +35,7 @@ import {
 } from "./metadata";
 import { SafeImage } from "./SafeImage";
 import { buildCoverDataUri } from "./cover";
-import { prepareImageFile } from "./imagePrep";
+import { prepareImageFile, friendlyTxError, MAX_PFP_CHARS, PFP_MAX_EDGE } from "./imagePrep";
 import {
   avatarSrc,
   emptyProfile,
@@ -686,10 +686,12 @@ function MyPagePanel({
 }) {
   const { address: user, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
+  const { disconnect } = useDisconnect();
   const { profile, refetch } = useProfile(user);
   const [name, setName] = useState("");
   const [imageURI, setImageURI] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgTone, setMsgTone] = useState<"ok" | "err" | "info">("info");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -726,29 +728,48 @@ function MyPagePanel({
 
   const { writeContractAsync } = useWriteContract();
 
+  const imageBytesHint = useMemo(() => {
+    if (!imageURI) return null;
+    const chars = imageURI.length;
+    const kb = Math.round((chars * 3) / 4 / 1024);
+    return { chars, kb };
+  }, [imageURI]);
+
   const onSaveProfile = async () => {
     try {
       setMsg(null);
       setBusy(true);
       if (!isConnected || !user) {
+        setMsgTone("err");
         setMsg("ウォレットを接続してください");
         return;
       }
       if (chainId !== CHAIN.id) {
         switchChain?.({ chainId: CHAIN.id });
+        setMsgTone("info");
         setMsg("Amoy に切替後もう一度");
         return;
       }
       const n = name.trim();
       if (n.length > 32) {
+        setMsgTone("err");
         setMsg("表示名は32文字以内");
         return;
       }
-      if (imageURI.length > 12000) {
-        setMsg("画像データが大きすぎます");
+      // Hard client cap — large data URIs dominate gas
+      if (imageURI.length > MAX_PFP_CHARS + 200) {
+        setMsgTone("err");
+        setMsg(
+          "アイコンが大きすぎます。画像を選び直すかクリアしてください（ガス節約のため小さく圧縮します）"
+        );
         return;
       }
-      setMsg("プロフィール保存中…");
+      setMsgTone("info");
+      setMsg(
+        imageURI
+          ? "プロフィール保存中…（画像あり · ガスは Amoy で高めになりがち）"
+          : "プロフィール保存中…（名前のみ · 安い）"
+      );
       const hash = await writeContractAsync({
         address: PROFILE_ADDRESS,
         abi: PROFILE_ABI,
@@ -756,10 +777,12 @@ function MyPagePanel({
         args: [n, imageURI],
         chainId: CHAIN.id,
       } as any);
+      setMsgTone("ok");
       setMsg(`保存しました ${String(hash).slice(0, 10)}…`);
       refetch();
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "エラー");
+      setMsgTone("err");
+      setMsg(friendlyTxError(e));
     } finally {
       setBusy(false);
     }
@@ -768,14 +791,22 @@ function MyPagePanel({
   const onPickPfp = async (file: File | null) => {
     if (!file) return;
     setBusy(true);
-    const prep = await prepareImageFile(file, 10_000);
+    const prep = await prepareImageFile(file, {
+      maxChars: MAX_PFP_CHARS,
+      maxEdge: PFP_MAX_EDGE,
+      minEdge: 48,
+    });
     setBusy(false);
     if (!prep.ok) {
+      setMsgTone("err");
       setMsg(prep.error);
       return;
     }
     setImageURI(prep.dataUri);
-    setMsg("画像を圧縮しました · 保存でオンチェーンに反映");
+    setMsgTone("info");
+    setMsg(
+      `アイコン圧縮完了 ~${prep.bytesApprox} bytes · 保存でオンチェーン反映（名前のみよりガス多め）`
+    );
   };
 
   if (!isConnected) {
@@ -790,10 +821,20 @@ function MyPagePanel({
   return (
     <section className="mypage">
       <div className="surface mypage-profile">
-        <h2>プロフィール</h2>
+        <div className="mypage-list-head">
+          <h2>プロフィール</h2>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={() => disconnect()}
+          >
+            切断
+          </button>
+        </div>
         <p className="hint">
-          表示名とアイコンはオンチェーン（無料・永続）。カード／詳細／ヘッダーに出ます。
-          未設定ならアドレス表示のみ。
+          表示名とアイコンはオンチェーン（永続・SaaS なし）。
+          <strong>名前だけ</strong>なら安いです。
+          アイコンは 128px に圧縮して保存します（Amoy はガス単価が高め · mainnet Polygon の方が通常安い）。
         </p>
         <div className="mypage-preview">
           <CreatorChip address={user} profile={{ name, imageURI }} />
@@ -809,7 +850,7 @@ function MyPagePanel({
           />
         </label>
         <div className="field">
-          <span>アイコン</span>
+          <span>アイコン（任意 · 小さいほど安い）</span>
           <div className="image-actions">
             <label className="btn file-btn">
               {busy ? "処理中…" : "画像を選ぶ"}
@@ -824,7 +865,11 @@ function MyPagePanel({
             <button
               type="button"
               className="btn ghost"
-              onClick={() => setImageURI("")}
+              onClick={() => {
+                setImageURI("");
+                setMsgTone("info");
+                setMsg("アイコンを外しました（名前のみ保存が最安）");
+              }}
             >
               クリア
             </button>
@@ -836,6 +881,14 @@ function MyPagePanel({
               className="pfp-preview"
             />
           )}
+          {imageBytesHint && (
+            <p className="hint gas-hint">
+              オンチェーン画像 ~{imageBytesHint.kb} KB（{imageBytesHint.chars} chars）
+              {imageBytesHint.chars > 2000
+                ? " · ガス多め"
+                : " · 比較的コンパクト"}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -845,7 +898,9 @@ function MyPagePanel({
         >
           {busy ? "処理中…" : "プロフィールを保存"}
         </button>
-        {msg && <p className="status">{msg}</p>}
+        {msg && (
+          <p className={`status short-status status-${msgTone}`}>{msg}</p>
+        )}
       </div>
 
       <div className="surface mypage-list">
@@ -1012,7 +1067,7 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
       }
       setMsg("作成中…");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "エラー");
+      setMsg(friendlyTxError(e));
     }
   };
 
