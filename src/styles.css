@@ -536,6 +536,10 @@ a {
   color: var(--earth, #6b5a3e);
   flex-shrink: 0;
 }
+.gas-hint {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+}
 
 .card-cover-badge {
   position: absolute;
