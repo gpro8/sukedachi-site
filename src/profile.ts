@@ -3,10 +3,11 @@ import type { Address } from "viem";
 export type UserProfile = {
   name: string;
   imageURI: string;
+  xHandle: string;
 };
 
 export function emptyProfile(): UserProfile {
-  return { name: "", imageURI: "" };
+  return { name: "", imageURI: "", xHandle: "" };
 }
 
 export function profileDisplayName(p: UserProfile | undefined, address?: string): string {
@@ -16,7 +17,7 @@ export function profileDisplayName(p: UserProfile | undefined, address?: string)
 }
 
 export function hasDisplayProfile(p?: UserProfile): boolean {
-  return !!(p && (p.name.trim() || p.imageURI.trim()));
+  return !!(p && (p.name.trim() || p.imageURI.trim() || p.xHandle.trim()));
 }
 
 /** Tiny deterministic avatar when no pfp set — not stored on-chain */
@@ -41,8 +42,6 @@ export function avatarSrc(p: UserProfile | undefined, address?: string): string 
   if (address) return fallbackAvatarDataUri(address);
   return fallbackAvatarDataUri("0x0000000000000000000000000000000000000000");
 }
-
-export type ProfileMap = Record<string, UserProfile>;
 
 export function keyAddr(a: Address | string): string {
   return a.toLowerCase();

@@ -40,10 +40,11 @@ import {
   avatarSrc,
   emptyProfile,
   hasDisplayProfile,
-  keyAddr,
   profileDisplayName,
   type UserProfile,
 } from "./profile";
+import { clearDraft, fmtDraftTime, loadDraft, saveDraft } from "./drafts";
+import { FAQ_ITEMS, normalizeXHandle, xIntentUrl, xProfileUrl } from "./faq";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -71,6 +72,16 @@ function statusLabel(
   if (state === 2) return { text: "未達 · 返金可", tone: "done" };
   if (state === 3) return { text: "支払済", tone: "done" };
   return { text: "—", tone: "muted" };
+}
+
+function isLotCompleted(
+  kind: Kind,
+  state: number,
+  deadline: number,
+  now: number
+): boolean {
+  const s = statusLabel(kind, state, deadline, now);
+  return s.tone === "closed" || s.tone === "done";
 }
 
 function kindLabel(kind: Kind): string {
@@ -154,10 +165,22 @@ function CreatorChip({
   if (!address) return null;
   const show = hasDisplayProfile(profile);
   const name = profileDisplayName(profile, address);
+  const xUrl = profile?.xHandle ? xProfileUrl(profile.xHandle) : "";
   return (
     <span className={`creator-chip ${compact ? "compact" : ""}`} title={address}>
       <img src={avatarSrc(profile, address)} alt="" className="creator-av" />
       <span className="creator-name">{show ? name : shortAddr(address)}</span>
+      {xUrl && !compact && (
+        <a
+          className="x-link"
+          href={xUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+        >
+          𝕏
+        </a>
+      )}
     </span>
   );
 }
@@ -175,6 +198,7 @@ function useProfile(address?: Address) {
     return {
       name: String(data[0] || ""),
       imageURI: String(data[1] || ""),
+      xHandle: String(data[2] || ""),
     };
   }, [data]);
   return { profile, refetch };
@@ -507,6 +531,21 @@ function DetailPanel({
             <CreatorChip address={creator} profile={creatorProfile} />
           </div>
         )}
+        <div className="share-row">
+          <a
+            className="btn ghost"
+            href={xIntentUrl(
+              `【助太刀】${title}\n仲間の旗揚げに加勢しませんか #助太刀 #BushiDAO`,
+              typeof window !== "undefined"
+                ? window.location.href.split("#")[0]
+                : "https://gpro8.github.io/sukedachi-site/"
+            )}
+            target="_blank"
+            rel="noreferrer"
+          >
+            𝕏 で知らせる
+          </a>
+        </div>
         {meta.description && (
           <p className="desc">{meta.description}</p>
         )}
@@ -690,6 +729,7 @@ function MyPagePanel({
   const { profile, refetch } = useProfile(user);
   const [name, setName] = useState("");
   const [imageURI, setImageURI] = useState("");
+  const [xHandle, setXHandle] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [msgTone, setMsgTone] = useState<"ok" | "err" | "info">("info");
   const [busy, setBusy] = useState(false);
@@ -697,7 +737,8 @@ function MyPagePanel({
   useEffect(() => {
     setName(profile.name);
     setImageURI(profile.imageURI);
-  }, [profile.name, profile.imageURI]);
+    setXHandle(profile.xHandle);
+  }, [profile.name, profile.imageURI, profile.xHandle]);
 
   const { data: myCamps, refetch: refetchMine } = useReadContract({
     address: FACTORY_ADDRESS,
@@ -708,6 +749,68 @@ function MyPagePanel({
   });
 
   const mine = (myCamps as Address[] | undefined) || [];
+
+  // Contribution history: pledged amounts on all crowdfund flags
+  const { data: allCount } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: "campaignCount",
+    query: { enabled: !!user },
+  });
+  const allN = Number(allCount ?? 0n);
+  const allIdx = useMemo(
+    () => Array.from({ length: allN }, (_, i) => i),
+    [allN]
+  );
+  const { data: allAddrRes } = useReadContracts({
+    contracts: allIdx.map((i) => ({
+      address: FACTORY_ADDRESS,
+      abi: FACTORY_ABI,
+      functionName: "campaigns",
+      args: [BigInt(i)],
+    })) as any,
+    query: { enabled: !!user && allN > 0 },
+  });
+  const allAddrs = useMemo(() => {
+    if (!allAddrRes) return [] as Address[];
+    return allAddrRes
+      .map((r) => r.result as Address | undefined)
+      .filter((a): a is Address => !!a);
+  }, [allAddrRes]);
+
+  const { data: pledgeProbe } = useReadContracts({
+    contracts: allAddrs.flatMap((a) => [
+      {
+        address: a,
+        abi: CROWDFUND_ABI,
+        functionName: "pledged",
+        args: user ? [user] : undefined,
+      },
+      { address: a, abi: CROWDFUND_ABI, functionName: "metadataURI" },
+      { address: a, abi: CROWDFUND_ABI, functionName: "goal" },
+    ]) as any,
+    query: { enabled: !!user && allAddrs.length > 0 },
+  });
+
+  const contributions = useMemo(() => {
+    if (!pledgeProbe || !user) return [] as { addr: Address; amount: bigint; uri: string }[];
+    const out: { addr: Address; amount: bigint; uri: string }[] = [];
+    for (let i = 0; i < allAddrs.length; i++) {
+      const base = i * 3;
+      const amtRes = pledgeProbe[base];
+      const uriRes = pledgeProbe[base + 1];
+      const goalRes = pledgeProbe[base + 2];
+      if (goalRes?.status !== "success") continue; // not crowdfund
+      const amount = (amtRes?.result as bigint) ?? 0n;
+      if (amount <= 0n) continue;
+      out.push({
+        addr: allAddrs[i],
+        amount,
+        uri: String(uriRes?.result || ""),
+      });
+    }
+    return out.reverse();
+  }, [pledgeProbe, allAddrs, user]);
 
   const { data: kindProbes } = useReadContracts({
     contracts: mine.flatMap((a) => [
@@ -764,17 +867,18 @@ function MyPagePanel({
         );
         return;
       }
+      const x = normalizeXHandle(xHandle);
       setMsgTone("info");
       setMsg(
         imageURI
           ? "プロフィール保存中…（画像あり · ガスは Amoy で高めになりがち）"
-          : "プロフィール保存中…（名前のみ · 安い）"
+          : "プロフィール保存中…（名前/X · 安い）"
       );
       const hash = await writeContractAsync({
         address: PROFILE_ADDRESS,
         abi: PROFILE_ABI,
         functionName: "setProfile",
-        args: [n, imageURI],
+        args: [n, imageURI, x],
         chainId: CHAIN.id,
       } as any);
       setMsgTone("ok");
@@ -822,7 +926,7 @@ function MyPagePanel({
     <section className="mypage">
       <div className="surface mypage-profile">
         <div className="mypage-list-head">
-          <h2>プロフィール</h2>
+          <h2>わが姿（プロフィール）</h2>
           <button
             type="button"
             className="btn ghost"
@@ -832,12 +936,11 @@ function MyPagePanel({
           </button>
         </div>
         <p className="hint">
-          表示名とアイコンはオンチェーン（永続・SaaS なし）。
-          <strong>名前だけ</strong>なら安いです。
-          アイコンは 128px に圧縮して保存します（Amoy はガス単価が高め · mainnet Polygon の方が通常安い）。
+          表示名・𝕏・アイコンはオンチェーン（永続）。
+          <strong>名前 / 𝕏 のみ</strong>なら安いです。アイコンは小さく圧縮。
         </p>
         <div className="mypage-preview">
-          <CreatorChip address={user} profile={{ name, imageURI }} />
+          <CreatorChip address={user} profile={{ name, imageURI, xHandle }} />
           <span className="muted">{shortAddr(user)}</span>
         </div>
         <label className="field">
@@ -847,6 +950,16 @@ function MyPagePanel({
             onChange={(e) => setName(e.target.value)}
             maxLength={32}
             placeholder="例: 武者太郎"
+          />
+        </label>
+        <label className="field">
+          <span>𝕏 ユーザー名（任意）</span>
+          <input
+            value={xHandle}
+            onChange={(e) => setXHandle(e.target.value)}
+            maxLength={40}
+            placeholder="@bushi_dao または bushi_dao"
+            spellCheck={false}
           />
         </label>
         <div className="field">
@@ -876,7 +989,7 @@ function MyPagePanel({
           </div>
           {(imageURI || user) && (
             <img
-              src={avatarSrc({ name, imageURI }, user)}
+              src={avatarSrc({ name, imageURI, xHandle }, user)}
               alt=""
               className="pfp-preview"
             />
@@ -905,7 +1018,7 @@ function MyPagePanel({
 
       <div className="surface mypage-list">
         <div className="mypage-list-head">
-          <h2>自分の旗揚げ</h2>
+          <h2>掲げた旗</h2>
           <button type="button" className="linkish" onClick={() => refetchMine()}>
             更新
           </button>
@@ -933,7 +1046,58 @@ function MyPagePanel({
           </div>
         )}
       </div>
+
+      <div className="surface mypage-list">
+        <h2>加勢の記録</h2>
+        <p className="hint">皆済の旗への誓約（tJPYC）。義援の明細は今後拡充します。</p>
+        {contributions.length === 0 ? (
+          <p className="hint">まだ加勢の記録がありません。</p>
+        ) : (
+          <ul className="contrib-list">
+            {contributions.map((c) => (
+              <ContribRow
+                key={c.addr}
+                addr={c.addr}
+                amount={c.amount}
+                uri={c.uri}
+                onOpen={() => onOpenCampaign(c.addr, "crowdfund")}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
+  );
+}
+
+function ContribRow({
+  addr,
+  amount,
+  uri,
+  onOpen,
+}: {
+  addr: Address;
+  amount: bigint;
+  uri: string;
+  onOpen: () => void;
+}) {
+  const [title, setTitle] = useState(shortAddr(addr));
+  useEffect(() => {
+    let c = false;
+    loadMeta(uri).then((m) => {
+      if (!c && m.name) setTitle(m.name);
+    });
+    return () => {
+      c = true;
+    };
+  }, [uri]);
+  return (
+    <li>
+      <button type="button" className="contrib-row" onClick={onOpen}>
+        <span className="contrib-title">{title}</span>
+        <span className="contrib-amt">{formatUnits(amount, 18)} tJPYC</span>
+      </button>
+    </li>
   );
 }
 
@@ -956,6 +1120,26 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [uriOverride, setUriOverride] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [draftNote, setDraftNote] = useState<string | null>(null);
+
+  // Restore draft once
+  useEffect(() => {
+    const d = loadDraft();
+    if (!d) return;
+    setMode(d.mode);
+    setGoal(d.goal);
+    setSoftGoal(d.softGoal);
+    setDays(d.days);
+    if (d.beneficiary) setBeneficiary(d.beneficiary);
+    setTitle(d.title);
+    setDescription(d.description);
+    setReturnText(d.returnText);
+    setImageField(d.imageField);
+    setImageMode(d.imageMode);
+    setUriOverride(d.uriOverride || "");
+    setDraftNote(`下書きを復元（${fmtDraftTime(d.savedAt)} JST 頃）`);
+  }, []);
 
   useEffect(() => {
     if (user && !beneficiary) setBeneficiary(user);
@@ -981,10 +1165,38 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   useEffect(() => {
     if (isSuccess) {
       setMsg("作成完了");
+      clearDraft();
+      setDraftNote(null);
+      setConfirmOpen(false);
       onCreated();
       reset();
     }
   }, [isSuccess, onCreated, reset]);
+
+  const draftPayload = () => ({
+    mode,
+    goal,
+    softGoal,
+    days,
+    beneficiary,
+    title,
+    description,
+    returnText,
+    imageField,
+    imageMode,
+    uriOverride,
+  });
+
+  const onSaveDraft = () => {
+    saveDraft(draftPayload());
+    setDraftNote(`下書きを保存しました（${fmtDraftTime(Date.now())}）· この端末のブラウザのみ`);
+    setMsg(null);
+  };
+
+  const onClearDraft = () => {
+    clearDraft();
+    setDraftNote("下書きを削除しました");
+  };
 
   const onPickFile = async (file: File | null) => {
     if (!file) return;
@@ -1009,31 +1221,49 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
     setImageNote("タイトルから和色カバーを自動生成します（永続・無料）");
   };
 
+  const validateBeforeSubmit = (): string | null => {
+    if (chainId !== CHAIN.id) {
+      switchChain?.({ chainId: CHAIN.id });
+      return "Amoy に切替後もう一度";
+    }
+    const ben = (beneficiary || "").trim() as Address;
+    if (!ben || !ben.startsWith("0x") || ben.length !== 42) {
+      return "受取人アドレスを入力";
+    }
+    if (!uriOverride.trim()) {
+      const err = validateCreateForm({
+        title,
+        description,
+        image: imageField,
+      });
+      if (err) return err;
+    }
+    return null;
+  };
+
+  const openConfirm = () => {
+    setMsg(null);
+    const err = validateBeforeSubmit();
+    if (err) {
+      setMsg(err);
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
   const submit = async () => {
     try {
       setMsg(null);
-      if (chainId !== CHAIN.id) {
-        switchChain?.({ chainId: CHAIN.id });
-        setMsg("Amoy に切替後もう一度");
+      const err = validateBeforeSubmit();
+      if (err) {
+        setMsg(err);
+        setConfirmOpen(false);
         return;
       }
       const ben = (beneficiary || "").trim() as Address;
-      if (!ben || !ben.startsWith("0x") || ben.length !== 42) {
-        setMsg("受取人アドレスを入力");
-        return;
-      }
 
       let metadataURI = uriOverride.trim();
       if (!metadataURI) {
-        const err = validateCreateForm({
-          title,
-          description,
-          image: imageField,
-        });
-        if (err) {
-          setMsg(err);
-          return;
-        }
         metadataURI = buildMetadataDataUri({
           title,
           description,
@@ -1066,8 +1296,10 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
         } as any);
       }
       setMsg("作成中…");
+      setConfirmOpen(false);
     } catch (e) {
       setMsg(friendlyTxError(e));
+      setConfirmOpen(false);
     }
   };
 
@@ -1232,19 +1464,83 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
       )}
 
       <button
+        type="button"
+        className="btn ghost wide"
+        onClick={onSaveDraft}
+      >
+        下書きを保存
+      </button>
+      <button
+        type="button"
+        className="linkish"
+        onClick={onClearDraft}
+        style={{ marginBottom: "0.5rem" }}
+      >
+        下書きを捨てる
+      </button>
+      {draftNote && <p className="hint">{draftNote}</p>}
+
+      <button
         className="btn primary wide"
         disabled={isPending || isLoading}
-        onClick={submit}
+        onClick={openConfirm}
       >
-        {isPending || isLoading ? "処理中…" : "旗を揚げる"}
+        {isPending || isLoading ? "処理中…" : "確認して旗を揚げる"}
       </button>
-      {msg && <p className="status">{msg}</p>}
+      {msg && <p className="status short-status">{msg}</p>}
       {txHash && (
         <p className="status">
           <a href={`${EXPLORER}/tx/${txHash}`} target="_blank" rel="noreferrer">
             Tx {txHash.slice(0, 12)}…
           </a>
         </p>
+      )}
+
+      {confirmOpen && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setConfirmOpen(false)}>
+          <div
+            className="modal surface"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>旗揚げの確認</h3>
+            <p className="hint">オンチェーン送信前の最終確認です。内容は後から変えられません。</p>
+            <ul className="confirm-list">
+              <li>
+                <strong>種類</strong> {mode === "charity" ? "義援の旗" : "皆済の旗"}
+              </li>
+              <li>
+                <strong>タイトル</strong> {title || "（URI指定）"}
+              </li>
+              <li>
+                <strong>期間</strong> {days} 日
+              </li>
+              <li>
+                <strong>
+                  {mode === "crowdfund" ? "目標" : "希望額"}
+                </strong>{" "}
+                {mode === "crowdfund" ? goal : softGoal || "—"} tJPYC
+              </li>
+              <li>
+                <strong>受取人</strong> {shortAddr(beneficiary as Address)}
+              </li>
+            </ul>
+            <div className="modal-actions">
+              <button type="button" className="btn ghost" onClick={() => setConfirmOpen(false)}>
+                戻る
+              </button>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={isPending || isLoading}
+                onClick={submit}
+              >
+                送信する
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
@@ -1307,8 +1603,38 @@ export default function App() {
   const [selectedKindOverride, setSelectedKindOverride] = useState<Kind | null>(
     null
   );
-  const [tab, setTab] = useState<"list" | "create" | "me">("list");
+  const [tab, setTab] = useState<"list" | "create" | "me" | "faq">("list");
+  const [listFilter, setListFilter] = useState<"open" | "done">("open");
+  const now = useNow();
   const { profile: myProfile } = useProfile(address);
+
+  // status probes for filter
+  const { data: statusProbe } = useReadContracts({
+    contracts: addresses.flatMap((a, i) => {
+      const abi = kinds[i] === "charity" ? CHARITY_ABI : CROWDFUND_ABI;
+      return [
+        { address: a, abi, functionName: "deadline" },
+        { address: a, abi, functionName: "state" },
+      ];
+    }) as any,
+    query: { enabled: addresses.length > 0, refetchInterval: 15_000 },
+  });
+
+  const filtered = useMemo(() => {
+    return addresses
+      .map((a, i) => ({
+        addr: a,
+        kind: (kinds[i] === "unknown" ? "crowdfund" : kinds[i]) as Kind,
+        idx: i,
+      }))
+      .filter((row) => {
+        if (!statusProbe) return listFilter === "open";
+        const d = Number(statusProbe[row.idx * 2]?.result ?? 0n);
+        const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
+        const done = isLotCompleted(row.kind, st, d, now);
+        return listFilter === "done" ? done : !done;
+      });
+  }, [addresses, kinds, statusProbe, listFilter, now]);
 
   const selectedKind: Kind = useMemo(() => {
     if (selectedKindOverride) return selectedKindOverride;
@@ -1397,6 +1723,16 @@ export default function App() {
         >
           マイページ
         </button>
+        <button
+          type="button"
+          className={tab === "faq" ? "on" : ""}
+          onClick={() => {
+            setTab("faq");
+            setSelected(null);
+          }}
+        >
+          心得（FAQ）
+        </button>
       </div>
 
       {tab === "create" ? (
@@ -1415,6 +1751,19 @@ export default function App() {
             setTab("list");
           }}
         />
+      ) : tab === "faq" ? (
+        <section className="faq surface">
+          <h2>心得 · よくある質問</h2>
+          <p className="hint">助太刀の使い方と思想。困ったらまずここを。</p>
+          <div className="faq-list">
+            {FAQ_ITEMS.map((item) => (
+              <details key={item.q} className="faq-item">
+                <summary>{item.q}</summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
       ) : selected ? (
         <DetailPanel
           address={selected}
@@ -1430,24 +1779,41 @@ export default function App() {
             仲間の<strong>旗揚げ</strong>に tJPYC で加勢する場。
             <strong>皆済</strong>は目標未達なら返金、
             <strong>義援</strong>は期間内の All-in です。
-            <br />
-            <span className="muted">
-              工場 v2（EIP-1167 clones）· 新規作成はガスが安いです。
-            </span>
           </p>
-          {addresses.length === 0 ? (
+          <div className="list-filter">
+            <button
+              type="button"
+              className={listFilter === "open" ? "on" : ""}
+              onClick={() => setListFilter("open")}
+            >
+              募集中
+            </button>
+            <button
+              type="button"
+              className={listFilter === "done" ? "on" : ""}
+              onClick={() => setListFilter("done")}
+            >
+              完了・履歴
+            </button>
+          </div>
+          {filtered.length === 0 ? (
             <p className="hint">
-              まだ旗が立っていません。「旗を揚げる」から始められます。
+              {listFilter === "open"
+                ? "募集中の旗はありません。「完了・履歴」か「旗を揚げる」をご覧ください。"
+                : "完了した旗はまだありません。"}
             </p>
           ) : (
             <div className="grid">
-              {addresses.map((a, i) => (
+              {filtered.map((row) => (
                 <CampaignCard
-                  key={a}
-                  address={a}
-                  kind={kinds[i] || "unknown"}
+                  key={row.addr}
+                  address={row.addr}
+                  kind={row.kind}
                   selected={false}
-                  onSelect={() => setSelected(a)}
+                  onSelect={() => {
+                    setSelected(row.addr);
+                    setSelectedKindOverride(row.kind);
+                  }}
                 />
               ))}
             </div>

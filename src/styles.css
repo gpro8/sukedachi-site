@@ -424,9 +424,117 @@ a {
 .status-info {
   color: var(--muted);
 }
-.gas-hint {
-  margin-top: 0.35rem;
-  font-size: 0.78rem;
+.share-row {
+  margin: 0.35rem 0 0.75rem;
+}
+.x-link {
+  font-weight: 700;
+  color: var(--accent-deep, #1f3134);
+  text-decoration: none;
+  margin-left: 0.15rem;
+}
+.list-filter {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.9rem;
+}
+.list-filter button {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+}
+.list-filter button.on {
+  background: var(--accent, #c9a227);
+  border-color: transparent;
+  color: #1a1a1a;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 14, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+  padding: 1rem;
+}
+.modal {
+  width: min(420px, 100%);
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: 14px;
+}
+.modal h3 {
+  margin: 0 0 0.4rem;
+}
+.confirm-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 1rem;
+  font-size: 0.9rem;
+}
+.confirm-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+.faq-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  background: #fff;
+}
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.faq-item p {
+  margin: 0.5rem 0 0.15rem;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+.contrib-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+}
+.contrib-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.4rem;
+  cursor: pointer;
+  text-align: left;
+}
+.contrib-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contrib-amt {
+  font-variant-numeric: tabular-nums;
+  color: var(--earth, #6b5a3e);
+  flex-shrink: 0;
 }
 
 .card-cover-badge {

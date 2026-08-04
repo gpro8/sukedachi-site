@@ -14,7 +14,7 @@ export const FACTORY_ADDRESS =
 export const JPYC_ADDRESS =
   "0x996727D565dFC452491f961Ad370fe3F0B5dD124" as Address;
 export const PROFILE_ADDRESS =
-  "0x483eFE8068159B2EB7392517e6Dd54C2a826c2AD" as Address;
+  "0x5260D0782137A8B014979754756D5e9e6EF0287F" as Address;
 
 /** Future mainnet official JPYC (do not use on Amoy UI) */
 export const MAINNET_JPYC =
