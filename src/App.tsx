@@ -1754,7 +1754,9 @@ export default function App() {
       ) : tab === "faq" ? (
         <section className="faq surface">
           <h2>心得 · よくある質問</h2>
-          <p className="hint">助太刀の使い方と思想。困ったらまずここを。</p>
+          <p className="hint">
+            助太刀の使い方と思想。困ったらまずここを。各項目を開くと説明が出ます。
+          </p>
           <div className="faq-list">
             {FAQ_ITEMS.map((item) => (
               <details key={item.q} className="faq-item">
