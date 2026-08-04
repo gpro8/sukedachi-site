@@ -21,6 +21,9 @@ import {
   JPYC_ADDRESS,
   PROFILE_ABI,
   PROFILE_ADDRESS,
+  TOKEN_SYMBOL,
+  MIN_GOAL_WHOLE,
+  formatTokenAmount,
   arweaveToHttp,
   shortAddr,
 } from "./config";
@@ -286,7 +289,7 @@ function CampaignCard({
             {formatUnits(raised, 18)}
             <span className="muted">
               {" "}
-              / {goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "—"} tJPYC
+              / {goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "—"} {TOKEN_SYMBOL}
             </span>
           </span>
           <span className="muted">{fmtLeft(deadline - now)}</span>
@@ -568,7 +571,7 @@ function DetailPanel({
         </div>
         <div className="bar-labels">
           <span>
-            集まった義金 {formatUnits(raised, 18)} tJPYC
+            集まった義金 {formatUnits(raised, 18)} {TOKEN_SYMBOL}
             {kind === "crowdfund" && goalOrSoft > 0n && (
               <> / 目標 {formatUnits(goalOrSoft, 18)}</>
             )}
@@ -606,7 +609,7 @@ function DetailPanel({
         {kind === "crowdfund" && myPledge > 0n && (
           <div>
             <dt>あなたの加勢</dt>
-            <dd>{formatUnits(myPledge, 18)} tJPYC</dd>
+            <dd>{formatUnits(myPledge, 18)} {TOKEN_SYMBOL}</dd>
           </div>
         )}
       </dl>
@@ -628,7 +631,7 @@ function DetailPanel({
         <div className="action-box">
           <div className="bid-head">
             <span className="bid-label">
-              {kind === "charity" ? "義援額 (tJPYC)" : "加勢額 (tJPYC)"}
+              {kind === "charity" ? `義援額 (${TOKEN_SYMBOL})` : `加勢額 (${TOKEN_SYMBOL})`}
             </span>
             <span className="bid-hint">
               残高 {bal != null ? formatUnits(bal as bigint, 18) : "—"}
@@ -648,7 +651,7 @@ function DetailPanel({
               disabled={isPending || confirming}
               onClick={onApprove}
             >
-              tJPYC を承認
+              {TOKEN_SYMBOL} を承認
             </button>
           ) : (
             <button
@@ -688,7 +691,7 @@ function DetailPanel({
           disabled={isPending}
           onClick={onClaimRefund}
         >
-          返金を受け取る ({formatUnits(myPledge, 18)} tJPYC)
+          返金を受け取る ({formatUnits(myPledge, 18)} {TOKEN_SYMBOL})
         </button>
       )}
 
@@ -1049,7 +1052,7 @@ function MyPagePanel({
 
       <div className="surface mypage-list">
         <h2>加勢の記録</h2>
-        <p className="hint">皆済の旗への誓約（tJPYC）。義援の明細は今後拡充します。</p>
+        <p className="hint">皆済の旗への誓約（{TOKEN_SYMBOL}）。義援の明細は今後拡充します。</p>
         {contributions.length === 0 ? (
           <p className="hint">まだ加勢の記録がありません。</p>
         ) : (
@@ -1095,7 +1098,7 @@ function ContribRow({
     <li>
       <button type="button" className="contrib-row" onClick={onOpen}>
         <span className="contrib-title">{title}</span>
-        <span className="contrib-amt">{formatUnits(amount, 18)} tJPYC</span>
+        <span className="contrib-amt">{formatUnits(amount, 18)} {TOKEN_SYMBOL}</span>
       </button>
     </li>
   );
@@ -1105,7 +1108,7 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   const { address: user, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
   const [mode, setMode] = useState<"crowdfund" | "charity">("crowdfund");
-  const [goal, setGoal] = useState("100");
+  const [goal, setGoal] = useState(String(MIN_GOAL_WHOLE));
   const [softGoal, setSoftGoal] = useState("0");
   const [days, setDays] = useState("1");
   const [beneficiary, setBeneficiary] = useState("");
@@ -1158,6 +1161,23 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
     abi: FACTORY_ABI,
     functionName: "minGoal",
   });
+
+  const { data: createOpen } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: "createOpen",
+  });
+
+  const { data: isAllowed } = useReadContract({
+    address: FACTORY_ADDRESS,
+    abi: FACTORY_ABI,
+    functionName: "isAllowedCreator",
+    args: user ? [user] : undefined,
+    query: { enabled: !!user },
+  });
+
+  const canCreateFlag =
+    createOpen === true || isAllowed === true;
 
   const { writeContract, data: txHash, isPending, reset } = useWriteContract();
   const { isSuccess, isLoading } = useWaitForTransactionReceipt({ hash: txHash });
@@ -1243,6 +1263,12 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
 
   const openConfirm = () => {
     setMsg(null);
+    if (!canCreateFlag) {
+      setMsg(
+        "旗揚げは現在アローリスト制です。許可されたウォレットのみ作成できます（後日オープン予定）。"
+      );
+      return;
+    }
     const err = validateBeforeSubmit();
     if (err) {
       setMsg(err);
@@ -1318,6 +1344,13 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
       <p className="hint">
         タイトル・説明はオンチェーン保存（data URI）。画像は<strong>自動和色カバー</strong>
         （永続無料）が既定。任意でファイルを圧縮して一緒に保存できます。外部ピン留め不要です。
+        {!canCreateFlag && (
+          <>
+            <br />
+            <strong>現在はアローリスト制</strong>
+            です。許可ウォレットのみ旗を揚げられます（後日オープン）。
+          </>
+        )}
       </p>
       <div className="mode-toggle">
         <button
@@ -1419,14 +1452,17 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
       {mode === "crowdfund" ? (
         <label className="field">
           <span>
-            目標 tJPYC（最低{" "}
-            {minGoal != null ? formatUnits(minGoal as bigint, 18) : "…"}）
+            目標 {TOKEN_SYMBOL}（最低{" "}
+            {minGoal != null
+              ? Number(formatUnits(minGoal as bigint, 18)).toLocaleString("ja-JP")
+              : MIN_GOAL_WHOLE.toLocaleString("ja-JP")}
+            ）
           </span>
           <input value={goal} onChange={(e) => setGoal(e.target.value)} />
         </label>
       ) : (
         <label className="field">
-          <span>希望額 tJPYC（任意・表示のみ）</span>
+          <span>希望額 {TOKEN_SYMBOL}（任意・表示のみ）</span>
           <input value={softGoal} onChange={(e) => setSoftGoal(e.target.value)} />
         </label>
       )}
@@ -1520,7 +1556,7 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
                 <strong>
                   {mode === "crowdfund" ? "目標" : "希望額"}
                 </strong>{" "}
-                {mode === "crowdfund" ? goal : softGoal || "—"} tJPYC
+                {mode === "crowdfund" ? goal : softGoal || "—"} {TOKEN_SYMBOL}
               </li>
               <li>
                 <strong>受取人</strong> {shortAddr(beneficiary as Address)}
@@ -1652,7 +1688,7 @@ export default function App() {
           <span className="logo">助</span>
           <div>
             <div className="brand-name">助太刀 Sukedachi</div>
-            <div className="brand-sub">和色 · Polygon Amoy · tJPYC · BushiDAO</div>
+            <div className="brand-sub">和色 · {CHAIN.name} · {TOKEN_SYMBOL} · BushiDAO</div>
           </div>
         </div>
         <nav className="nav">
@@ -1778,7 +1814,7 @@ export default function App() {
       ) : (
         <section className="list">
           <p className="intro">
-            仲間の<strong>旗揚げ</strong>に tJPYC で加勢する場。
+            仲間の<strong>旗揚げ</strong>に {TOKEN_SYMBOL} で加勢する場。
             <strong>皆済</strong>は目標未達なら返金、
             <strong>義援</strong>は期間内の All-in です。
           </p>
