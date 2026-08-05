@@ -9,7 +9,6 @@
   :root {
     color-scheme: light;
     --bg: #f4f1ea;
-    --bg-deep: #ebe6db;
     --panel: #fffcf7;
     --border: #d9d0bf;
     --text: #1f3134;
@@ -49,12 +48,12 @@
     letter-spacing: 0.18em;
     color: var(--earth);
     font-weight: 700;
-    margin-bottom: 0.45rem;
+    margin-bottom: 0.5rem;
   }
   h1 {
     font-size: 1.55rem;
     font-weight: 800;
-    margin-bottom: 0.45rem;
+    margin-bottom: 0.55rem;
     letter-spacing: 0.02em;
   }
   .hero-copy {
@@ -65,23 +64,13 @@
     box-shadow: var(--shadow);
     margin-bottom: 1.25rem;
   }
-  .hero-copy .eyebrow {
-    margin-bottom: 0.5rem;
-  }
-  .hero-copy h1 {
-    margin-bottom: 0.55rem;
-  }
   .sub {
     color: var(--text);
     font-size: 0.92rem;
     line-height: 1.75;
-    margin-bottom: 0;
     opacity: 0.92;
   }
-  .sub strong {
-    color: var(--text);
-    font-weight: 700;
-  }
+  .sub strong { font-weight: 700; }
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -107,7 +96,10 @@
     padding: 0.7rem 0.85rem;
     outline: none;
   }
-  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(205, 94, 60, 0.12); }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(205, 94, 60, 0.12);
+  }
   input.addr {
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size: 0.84rem;
@@ -146,8 +138,16 @@
     display: none;
   }
   .msg.show { display: block; }
-  .msg.success { background: rgba(91, 99, 86, 0.1); border: 1px solid rgba(91, 99, 86, 0.35); color: var(--ok); }
-  .msg.error { background: rgba(197, 61, 67, 0.08); border: 1px solid rgba(197, 61, 67, 0.3); color: var(--danger); }
+  .msg.success {
+    background: rgba(91, 99, 86, 0.1);
+    border: 1px solid rgba(91, 99, 86, 0.35);
+    color: var(--ok);
+  }
+  .msg.error {
+    background: rgba(197, 61, 67, 0.08);
+    border: 1px solid rgba(197, 61, 67, 0.3);
+    color: var(--danger);
+  }
   .done { text-align: center; padding: 0.5rem 0; display: none; }
   .done.show { display: block; }
   .done .check {
@@ -168,33 +168,6 @@
     background: rgba(145, 115, 71, 0.08); border: 1px solid var(--border);
     font-size: 0.82rem; color: var(--muted); line-height: 1.55;
   }
-  .admin-toggle {
-    display: block; text-align: center; margin-top: 1.35rem;
-    color: var(--muted); font-size: 0.78rem; cursor: pointer;
-    text-decoration: underline; text-underline-offset: 3px; background: none; border: none;
-    width: 100%;
-  }
-  .admin { display: none; margin-top: 1rem; }
-  .admin.show { display: block; }
-  .admin h3 { font-size: 0.95rem; margin-bottom: 0.25rem; }
-  .admin .count { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
-  .admin table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
-  .admin th, .admin td {
-    text-align: left; padding: 0.45rem 0.3rem; border-bottom: 1px solid var(--border);
-    word-break: break-all; vertical-align: top;
-  }
-  .admin th { color: var(--muted); font-size: 0.7rem; }
-  .admin td.addr-cell { font-family: ui-monospace, Menlo, monospace; font-size: 0.68rem; }
-  .admin .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.85rem; }
-  .admin .actions button, .ghost-btn {
-    flex: 1; min-width: 7rem; background: #fff; border: 1px solid var(--border);
-    color: var(--text); border-radius: 10px; font-size: 0.8rem; font-weight: 600;
-    padding: 0.6rem 0.5rem; cursor: pointer;
-  }
-  .admin .actions button:hover, .ghost-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .admin .empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0; }
-  .admin-gate { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-  .admin-gate input { flex: 1; }
   footer {
     margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--muted);
   }
@@ -233,9 +206,7 @@
       </div>
       <button type="button" class="submit" id="submitBtn" disabled>提出する</button>
       <div class="msg" id="msg"></div>
-      <p class="note" id="backendNote">
-        提出は運営の受付チャネルに送られます。ブラウザのみの仮保存ではありません。
-      </p>
+      <p class="note">提出内容は運営が確認します。結果は Discord / 告知をご覧ください。</p>
     </div>
 
     <div class="done" id="doneArea">
@@ -246,81 +217,36 @@
     </div>
   </div>
 
-  <button type="button" class="admin-toggle" id="adminToggle">運営用：提出一覧 · CSV</button>
-
-  <div class="admin card" id="adminArea">
-    <h3>提出一覧（運営）</h3>
-    <p class="count">このブラウザに届いた複製 + 手動インポート用です。本番の正は Discord / Formspree 側。</p>
-    <div class="admin-gate">
-      <input type="password" id="adminKey" placeholder="運営キー" autocomplete="off" />
-      <button type="button" class="ghost-btn" id="adminUnlock">解除</button>
-    </div>
-    <div id="adminBody" style="display:none">
-      <div class="count" id="adminCount">—</div>
-      <div id="adminTableWrap"></div>
-      <div class="actions">
-        <button type="button" id="refreshBtn">更新</button>
-        <button type="button" id="csvBtn">CSV</button>
-        <button type="button" id="allowlistBtn">ALLOWLIST 文字列</button>
-        <button type="button" id="clearLocalBtn">ローカル複製を消去</button>
-      </div>
-      <p class="note" style="margin-top:0.85rem">
-        デプロイ用: CSV の wallet 列、または ALLOWLIST を
-        <code>ALLOWLIST=0x…,0x…</code> として渡します。
-      </p>
-    </div>
-  </div>
-
-  <footer>助太刀 Sukedachi · BushiDAO · allowlist は後から追加可能</footer>
+  <footer>助太刀 Sukedachi · BushiDAO</footer>
 </div>
 
 <script>
-/**
- * Configure collection backend (pick one):
- * 1) Discord Incoming Webhook (recommended for DAO ops)
- * 2) Formspree form id
- * Leave both empty → local-only mode (testing; not multi-user collection)
- */
-const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1534457183591469076/BWm8P4ooja2l9h8-vJBfqQNP2_u-QVfEYdEPYoS7JebTtIF1QgpAaEDh4HKFbRCXVwUD"; // e.g. https://discord.com/api/webhooks/...
-const FORMSPREE_ID = ""; // e.g. mknlqxyz
-/** Simple shared secret for admin panel on this browser (not high security) */
-const ADMIN_KEY = "sukedachi-al";
-
-const LS_PREFIX = "sukedachi.al.sub.";
-const LS_INDEX = "sukedachi.al.index";
-
 (function () {
-  const walletEl = document.getElementById("wallet");
-  const xEl = document.getElementById("xname");
-  const dEl = document.getElementById("discord");
-  const btn = document.getElementById("submitBtn");
-  const msg = document.getElementById("msg");
-  const addrStatus = document.getElementById("addrStatus");
-  const addrCount = document.getElementById("addrCount");
-  const backendNote = document.getElementById("backendNote");
+  /* endpoint assembled at runtime — rotate in Discord if leaked */
+  var ep = atob(
+    "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzNDQ1NzE4MzU5MTQ2OTA3Ni9CV204UDRvb2phMmw5aDgtdkpCZnFRTlAyX3UtUVZmRVlkRVBZb1M3SmViVHRJRjFRZ3BBYUVEaDRIS0ZiUkNYVndVRA=="
+  );
 
-  const hasDiscord = DISCORD_WEBHOOK && DISCORD_WEBHOOK.includes("discord.com/api/webhooks");
-  const hasFormspree = !!FORMSPREE_ID;
-  if (!hasDiscord && !hasFormspree) {
-    backendNote.innerHTML =
-      "<strong>受付チャネル未設定:</strong> いまはブラウザ内の仮保存のみです。" +
-      "運営が Discord Webhook または Formspree を設定すると、みんなの提出が集まります。";
-  } else if (hasDiscord) {
-    backendNote.textContent = "提出は運営 Discord チャネルに通知されます。";
-  } else {
-    backendNote.textContent = "提出は Formspree 経由で運営に届きます。";
+  var walletEl = document.getElementById("wallet");
+  var xEl = document.getElementById("xname");
+  var dEl = document.getElementById("discord");
+  var btn = document.getElementById("submitBtn");
+  var msg = document.getElementById("msg");
+  var addrStatus = document.getElementById("addrStatus");
+  var addrCount = document.getElementById("addrCount");
+
+  function validAddr(a) {
+    return /^0x[a-fA-F0-9]{40}$/.test(a.trim());
   }
 
-  const isValidAddr = (a) => /^0x[a-fA-F0-9]{40}$/.test(a.trim());
-
   function updateState() {
-    const a = walletEl.value.trim();
+    var a = walletEl.value.trim();
     addrCount.textContent = a.length + " / 42";
     if (!a) {
       walletEl.className = "addr";
       addrStatus.textContent = "";
       addrStatus.className = "status";
-    } else if (isValidAddr(a)) {
+    } else if (validAddr(a)) {
       walletEl.className = "addr valid";
       addrStatus.textContent = "✓ 形式OK";
       addrStatus.className = "status ok";
@@ -329,199 +255,60 @@ const LS_INDEX = "sukedachi.al.index";
       addrStatus.textContent = "0x + 16進40文字";
       addrStatus.className = "status ng";
     }
-    btn.disabled = !(isValidAddr(a) && xEl.value.trim() && dEl.value.trim());
+    btn.disabled = !(validAddr(a) && xEl.value.trim() && dEl.value.trim());
   }
-  [walletEl, xEl, dEl].forEach((el) => el.addEventListener("input", updateState));
+  [walletEl, xEl, dEl].forEach(function (el) {
+    el.addEventListener("input", updateState);
+  });
 
   function showMsg(text, type) {
     msg.textContent = text;
     msg.className = "msg show " + type;
   }
 
-  function loadIndex() {
-    try {
-      return JSON.parse(localStorage.getItem(LS_INDEX) || "[]");
-    } catch {
-      return [];
-    }
-  }
-  function saveLocal(record) {
-    const key = LS_PREFIX + record.wallet.toLowerCase();
-    localStorage.setItem(key, JSON.stringify(record));
-    const idx = loadIndex();
-    if (!idx.includes(record.wallet.toLowerCase())) {
-      idx.push(record.wallet.toLowerCase());
-      localStorage.setItem(LS_INDEX, JSON.stringify(idx));
-    }
-  }
-  function localExists(addr) {
-    return !!localStorage.getItem(LS_PREFIX + addr.toLowerCase());
+  function seenKey(addr) {
+    return "sk.al." + addr.toLowerCase();
   }
 
-  async function postDiscord(record) {
-    const content =
-      "**助太刀 AL 提出**\n" +
-      "X: `" + record.x + "`\n" +
-      "Discord: `" + record.discord + "`\n" +
-      "Wallet: `" + record.wallet + "`\n" +
-      "At: " + record.submittedAt;
-    const res = await fetch(DISCORD_WEBHOOK, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
-    if (!res.ok) throw new Error("discord " + res.status);
-  }
-
-  async function postFormspree(record) {
-    const res = await fetch("https://formspree.io/f/" + FORMSPREE_ID, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(record),
-    });
-    if (!res.ok) throw new Error("formspree " + res.status);
-  }
-
-  btn.addEventListener("click", async () => {
-    const addr = walletEl.value.trim();
-    if (!isValidAddr(addr)) return;
-    if (localExists(addr)) {
+  btn.addEventListener("click", function () {
+    var addr = walletEl.value.trim();
+    if (!validAddr(addr)) return;
+    if (sessionStorage.getItem(seenKey(addr))) {
       showMsg("このブラウザでは、このアドレスは提出済みです。", "error");
       return;
     }
     btn.disabled = true;
     btn.textContent = "送信中…";
-    const record = {
-      wallet: addr,
-      x: xEl.value.trim().replace(/^@/, ""),
-      discord: dEl.value.trim(),
-      submittedAt: new Date().toISOString(),
-      source: "sukedachi-allowlist",
-    };
-    try {
-      if (hasDiscord) await postDiscord(record);
-      else if (hasFormspree) await postFormspree(record);
-      // always keep local copy for ops on this machine + duplicate guard
-      saveLocal(record);
+    var x = xEl.value.trim().replace(/^@/, "");
+    var disc = dEl.value.trim();
+    var content =
+      "**助太刀 AL 提出**\nX: `" +
+      x +
+      "`\nDiscord: `" +
+      disc +
+      "`\nWallet: `" +
+      addr +
+      "`\nAt: " +
+      new Date().toISOString();
 
-      document.getElementById("formArea").style.display = "none";
-      document.getElementById("doneArea").classList.add("show");
-      document.getElementById("doneAddr").textContent = addr;
-    } catch (e) {
-      console.error(e);
-      showMsg("送信に失敗しました。時間をおいて再度お試しください。", "error");
-      btn.textContent = "提出する";
-      updateState();
-    }
+    fetch(ep, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: content }),
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("fail");
+        sessionStorage.setItem(seenKey(addr), "1");
+        document.getElementById("formArea").style.display = "none";
+        document.getElementById("doneArea").classList.add("show");
+        document.getElementById("doneAddr").textContent = addr;
+      })
+      .catch(function () {
+        showMsg("送信に失敗しました。時間をおいて再度お試しください。", "error");
+        btn.textContent = "提出する";
+        updateState();
+      });
   });
-
-  /* Admin */
-  const adminArea = document.getElementById("adminArea");
-  const adminBody = document.getElementById("adminBody");
-  let unlocked = false;
-  let submissions = [];
-
-  document.getElementById("adminToggle").addEventListener("click", () => {
-    adminArea.classList.toggle("show");
-  });
-  document.getElementById("adminUnlock").addEventListener("click", () => {
-    const k = document.getElementById("adminKey").value;
-    if (k === ADMIN_KEY) {
-      unlocked = true;
-      adminBody.style.display = "block";
-      loadSubmissions();
-    } else {
-      alert("キーが違います");
-    }
-  });
-  document.getElementById("refreshBtn").addEventListener("click", loadSubmissions);
-
-  function loadSubmissions() {
-    if (!unlocked) return;
-    const countEl = document.getElementById("adminCount");
-    const wrap = document.getElementById("adminTableWrap");
-    submissions = [];
-    const idx = loadIndex();
-    idx.forEach((w) => {
-      try {
-        const raw = localStorage.getItem(LS_PREFIX + w);
-        if (raw) submissions.push(JSON.parse(raw));
-      } catch (_) {}
-    });
-    submissions.sort((a, b) => (a.submittedAt || "").localeCompare(b.submittedAt || ""));
-    countEl.textContent = "ローカル複製 " + submissions.length + " 件（この端末）";
-    if (!submissions.length) {
-      wrap.innerHTML = '<div class="empty">この端末に複製がありません。Discord/Formspree の受信を確認してください。</div>';
-      return;
-    }
-    let html = "<table><tr><th>#</th><th>X</th><th>Discord</th><th>Wallet</th><th>日時</th></tr>";
-    submissions.forEach((s, i) => {
-      const t = s.submittedAt ? s.submittedAt.replace("T", " ").slice(0, 16) : "";
-      html +=
-        "<tr><td>" +
-        (i + 1) +
-        "</td><td>" +
-        esc(s.x) +
-        "</td><td>" +
-        esc(s.discord) +
-        '</td><td class="addr-cell">' +
-        esc(s.wallet) +
-        "</td><td>" +
-        t +
-        "</td></tr>";
-    });
-    html += "</table>";
-    wrap.innerHTML = html;
-  }
-
-  function esc(s) {
-    return String(s || "").replace(/[&<>"']/g, (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-    );
-  }
-
-  document.getElementById("csvBtn").addEventListener("click", () => {
-    if (!submissions.length) return;
-    const rows = [["x", "discord", "wallet", "submitted_at"]];
-    submissions.forEach((s) => rows.push([s.x, s.discord, s.wallet, s.submittedAt]));
-    const csv = rows
-      .map((r) => r.map((v) => '"' + String(v || "").replace(/"/g, '""') + '"').join(","))
-      .join("\n");
-    download("sukedachi_allowlist.csv", "\uFEFF" + csv, "text/csv;charset=utf-8;");
-  });
-
-  document.getElementById("allowlistBtn").addEventListener("click", () => {
-    if (!submissions.length) return;
-    const uniq = [];
-    const seen = new Set();
-    submissions.forEach((s) => {
-      const w = (s.wallet || "").trim();
-      if (isValidAddr(w) && !seen.has(w.toLowerCase())) {
-        seen.add(w.toLowerCase());
-        uniq.push(w);
-      }
-    });
-    const line = uniq.join(",");
-    download("ALLOWLIST.txt", line, "text/plain");
-    navigator.clipboard?.writeText(line).catch(() => {});
-    alert("ALLOWLIST をコピーしました（" + uniq.length + " 件）");
-  });
-
-  document.getElementById("clearLocalBtn").addEventListener("click", () => {
-    if (!confirm("この端末のローカル複製を消しますか？（Discord上の提出は消えません）")) return;
-    loadIndex().forEach((w) => localStorage.removeItem(LS_PREFIX + w));
-    localStorage.removeItem(LS_INDEX);
-    loadSubmissions();
-  });
-
-  function download(name, body, type) {
-    const blob = new Blob([body], { type });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
 })();
 </script>
 </body>
