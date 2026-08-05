@@ -57,11 +57,30 @@
     margin-bottom: 0.45rem;
     letter-spacing: 0.02em;
   }
-  .sub {
-    color: var(--muted);
-    font-size: 0.92rem;
-    line-height: 1.7;
+  .hero-copy {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem 1.15rem;
+    box-shadow: var(--shadow);
     margin-bottom: 1.25rem;
+  }
+  .hero-copy .eyebrow {
+    margin-bottom: 0.5rem;
+  }
+  .hero-copy h1 {
+    margin-bottom: 0.55rem;
+  }
+  .sub {
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.75;
+    margin-bottom: 0;
+    opacity: 0.92;
+  }
+  .sub strong {
+    color: var(--text);
+    font-weight: 700;
   }
   .card {
     background: var(--panel);
@@ -184,13 +203,15 @@
 <body>
 <div class="wrap">
   <a class="top-link" href="./">← 助太刀トップ</a>
-  <div class="eyebrow">SUKEDACHI · ALLOWLIST</div>
-  <h1>旗揚げアローリスト提出</h1>
-  <p class="sub">
-    メインネット公開初期は<strong>許可ウォレットのみ</strong>が旗を揚げられます。
-    コミュニティメンバーのウォレットを登録申請してください（Polygon · EVM アドレス）。
-    運営が確認後、コントラクトの allowlist に反映します。あとから追加も可能です。
-  </p>
+  <div class="hero-copy">
+    <div class="eyebrow">SUKEDACHI · ALLOWLIST</div>
+    <h1>旗揚げアローリスト提出</h1>
+    <p class="sub">
+      メインネット公開初期は<strong>許可ウォレットのみ</strong>が旗を揚げられます。
+      コミュニティメンバーのウォレットを登録申請してください（Polygon · EVM アドレス）。
+      運営が確認後、コントラクトの allowlist に反映します。あとから追加も可能です。
+    </p>
+  </div>
 
   <div class="card">
     <div id="formArea">
@@ -260,7 +281,7 @@
  * 2) Formspree form id
  * Leave both empty → local-only mode (testing; not multi-user collection)
  */
-const DISCORD_WEBHOOK = ""; // e.g. https://discord.com/api/webhooks/...
+const DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1534457183591469076/BWm8P4ooja2l9h8-vJBfqQNP2_u-QVfEYdEPYoS7JebTtIF1QgpAaEDh4HKFbRCXVwUD"; // e.g. https://discord.com/api/webhooks/...
 const FORMSPREE_ID = ""; // e.g. mknlqxyz
 /** Simple shared secret for admin panel on this browser (not high security) */
 const ADMIN_KEY = "sukedachi-al";
