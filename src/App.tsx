@@ -1692,6 +1692,7 @@ export default function App() {
           </div>
         </div>
         <nav className="nav">
+          <a href="./allowlist.html">アローリスト</a>
           <a
             href={`${EXPLORER}/address/${FACTORY_ADDRESS}`}
             target="_blank"
