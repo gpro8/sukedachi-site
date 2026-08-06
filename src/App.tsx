@@ -47,7 +47,7 @@ import {
   type UserProfile,
 } from "./profile";
 import { clearDraft, fmtDraftTime, loadDraft, saveDraft } from "./drafts";
-import { FAQ_ITEMS, normalizeXHandle, xIntentUrl, xProfileUrl } from "./faq";
+import { FAQ_ITEMS, formatXHandleDisplay, normalizeXHandle, xIntentUrl, xProfileUrl } from "./faq";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -169,19 +169,21 @@ function CreatorChip({
   const show = hasDisplayProfile(profile);
   const name = profileDisplayName(profile, address);
   const xUrl = profile?.xHandle ? xProfileUrl(profile.xHandle) : "";
+  const xLabel = profile?.xHandle ? formatXHandleDisplay(profile.xHandle) : "";
   return (
     <span className={`creator-chip ${compact ? "compact" : ""}`} title={address}>
       <img src={avatarSrc(profile, address)} alt="" className="creator-av" />
       <span className="creator-name">{show ? name : shortAddr(address)}</span>
-      {xUrl && !compact && (
+      {xUrl && (
         <a
           className="x-link"
           href={xUrl}
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
+          title={xLabel || "X"}
         >
-          𝕏
+          𝕏{!compact && xLabel ? ` ${xLabel}` : ""}
         </a>
       )}
     </span>
@@ -956,14 +958,29 @@ function MyPagePanel({
           />
         </label>
         <label className="field">
-          <span>𝕏 ユーザー名（任意）</span>
+          <span>𝕏 ユーザー名（任意 · @は不要・自動で除去）</span>
           <input
             value={xHandle}
             onChange={(e) => setXHandle(e.target.value)}
+            onBlur={() => setXHandle(normalizeXHandle(xHandle))}
             maxLength={40}
-            placeholder="@bushi_dao または bushi_dao"
+            placeholder="bushi_dao（@なし）"
             spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
           />
+          {normalizeXHandle(xHandle) && (
+            <span className="hint gas-hint">
+              保存後のリンク:{" "}
+              <a
+                href={xProfileUrl(xHandle)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {xProfileUrl(xHandle)}
+              </a>
+            </span>
+          )}
         </label>
         <div className="field">
           <span>アイコン（任意 · 小さいほど安い）</span>
@@ -1688,17 +1705,19 @@ export default function App() {
           <span className="logo">助</span>
           <div>
             <div className="brand-name">助太刀 Sukedachi</div>
-            <div className="brand-sub">和色 · {CHAIN.name} · {TOKEN_SYMBOL} · BushiDAO</div>
+            <div className="brand-sub">
+              {CHAIN.name} · {TOKEN_SYMBOL} · BushiDAO
+            </div>
           </div>
         </div>
         <nav className="nav">
-          <a href="./allowlist.html">アローリスト</a>
+          <a href="./allowlist.html">AL申請</a>
           <a
             href={`${EXPLORER}/address/${FACTORY_ADDRESS}`}
             target="_blank"
             rel="noreferrer"
           >
-            契約
+            賢契約
           </a>
           {!isConnected ? (
             <button

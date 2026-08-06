@@ -49,15 +49,26 @@ export function xIntentUrl(text: string, url?: string): string {
 }
 
 export function normalizeXHandle(raw: string): string {
-  let s = raw.trim();
-  if (s.startsWith("@")) s = s.slice(1);
+  let s = (raw || "").trim();
+  // URLs first
   s = s.replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//i, "");
   s = s.split(/[/?#]/)[0] || "";
-  return s.slice(0, 32);
+  // strip @ / fullwidth ＠ anywhere leading; remove leftover @
+  s = s.replace(/^[＠@]+/u, "");
+  s = s.replace(/[＠@]/gu, "");
+  // handles: letters, numbers, underscore
+  s = s.replace(/[^\w]/g, "");
+  return s.slice(0, 15); // X max handle length
 }
 
 export function xProfileUrl(handle: string): string {
   const h = normalizeXHandle(handle);
   if (!h) return "";
-  return `https://x.com/${encodeURIComponent(h)}`;
+  // do not encodeURIComponent — keeps clean https://x.com/user
+  return `https://x.com/${h}`;
+}
+
+export function formatXHandleDisplay(handle: string): string {
+  const h = normalizeXHandle(handle);
+  return h ? `@${h}` : "";
 }
