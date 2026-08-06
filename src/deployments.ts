@@ -11,42 +11,37 @@ export type SukedachiDeployment = {
   chainId: number;
   chain: Chain;
   label: string;
-  /** Official / mock payment token */
   jpyc: Address;
-  /** Whole-token decimals — prefer live read; this is fallback */
   jpycDecimals: number;
   tokenSymbol: string;
   factory: Address;
   profile: Address;
-  /** First factory create block — getLogs window */
   factoryDeployBlock: bigint;
   status: "canonical" | "legacy" | "testnet";
-  /** Human params for UI */
   minGoalWhole: number;
   minDurationDays: number;
   createOpenDefault: boolean;
 };
 
-/** Polygon mainnet — fill factory/profile/block after deploy */
-export const POLYGON_MAINNET_PLACEHOLDER: SukedachiDeployment = {
+/** Polygon mainnet — live 2026-08-06 */
+export const POLYGON_MAINNET: SukedachiDeployment = {
   id: "polygon-jpyc-v1",
   chainId: 137,
   chain: polygon,
   label: "Polygon · JPYC",
-  // Live JPYC — owner-confirmed 0xE7C3… (2026-08)
   jpyc: "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29",
   jpycDecimals: 18,
   tokenSymbol: "JPYC",
-  factory: "0x0000000000000000000000000000000000000000",
-  profile: "0x0000000000000000000000000000000000000000",
-  factoryDeployBlock: 0n,
+  factory: "0xe1bc023Cc8703f957f4a200B56f85BeA74a3253A",
+  profile: "0xA8C536c4f555CA5F8b7Ff549F95D3c599FDB0FBE",
+  factoryDeployBlock: 91_568_548n,
   status: "canonical",
   minGoalWhole: 1000,
   minDurationDays: 1,
   createOpenDefault: false,
 };
 
-/** Amoy dogfood — clone factory + profile v2 */
+/** Amoy dogfood — kept in registry; not default */
 export const AMOY_TESTNET: SukedachiDeployment = {
   id: "amoy-tjpyc-v2",
   chainId: 80002,
@@ -60,17 +55,14 @@ export const AMOY_TESTNET: SukedachiDeployment = {
   factoryDeployBlock: 43_970_575n,
   status: "testnet",
   minGoalWhole: 100,
-  minDurationDays: 0, // factory may still be 1h on old Amoy
+  minDurationDays: 0,
   createOpenDefault: true,
 };
 
-/**
- * Active list. Until mainnet factory is set, site uses Amoy only.
- * After deploy: put mainnet first as canonical; keep Amoy if desired.
- */
+/** Active list — canonical mainnet first; never drop rows. */
 export const DEPLOYMENTS: SukedachiDeployment[] = [
-  // POLYGON_MAINNET_PLACEHOLDER, // enable when factory !== zero
-  AMOY_TESTNET,
+  POLYGON_MAINNET,
+  // AMOY_TESTNET, // re-enable only for dogfood UI
 ];
 
 export function activeDeployments(): SukedachiDeployment[] {
@@ -86,5 +78,5 @@ export function deploymentByChainId(chainId: number): SukedachiDeployment | unde
 export function defaultDeployment(): SukedachiDeployment {
   const live = activeDeployments();
   const canonical = live.find((d) => d.status === "canonical");
-  return canonical || live[0] || AMOY_TESTNET;
+  return canonical || live[0] || POLYGON_MAINNET;
 }
