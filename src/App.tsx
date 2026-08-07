@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useAccount,
   useConnect,
@@ -9,7 +9,7 @@ import {
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi";
-import { formatUnits, parseUnits, type Address } from "viem";
+import { formatUnits, parseUnits, decodeEventLog, type Address, type Log } from "viem";
 import {
   CHAIN,
   CHARITY_ABI,
@@ -62,6 +62,51 @@ import {
 type Kind = "crowdfund" | "charity" | "unknown";
 
 type Meta = CampaignMeta;
+
+/** Payload after a successful 旗揚げ — drives post-create share panel */
+type CreateSuccessInfo = {
+  address: Address | null;
+  kind: "crowdfund" | "charity";
+  title: string;
+  goalWei: bigint;
+  deadlineUnix: number;
+};
+
+function parseCreatedFromLogs(
+  logs: Log[]
+): { address: Address; kind: "crowdfund" | "charity"; goalWei: bigint; deadlineUnix: number } | null {
+  for (const log of logs) {
+    try {
+      const ev = decodeEventLog({
+        abi: FACTORY_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as {
+        eventName: string;
+        args: Record<string, unknown>;
+      };
+      if (ev.eventName === "CrowdfundCreated") {
+        return {
+          address: ev.args.campaign as Address,
+          kind: "crowdfund",
+          goalWei: (ev.args.goal as bigint) ?? 0n,
+          deadlineUnix: Number(ev.args.deadline ?? 0n),
+        };
+      }
+      if (ev.eventName === "CharityCreated") {
+        return {
+          address: ev.args.campaign as Address,
+          kind: "charity",
+          goalWei: (ev.args.softGoal as bigint) ?? 0n,
+          deadlineUnix: Number(ev.args.deadline ?? 0n),
+        };
+      }
+    } catch {
+      /* not our event */
+    }
+  }
+  return null;
+}
 
 /** On-chain enum alone is not enough — deadline may pass while state still Active */
 function statusLabel(
@@ -1158,7 +1203,195 @@ function ContribRow({
   );
 }
 
-function CreatePanel({ onCreated }: { onCreated: () => void }) {
+function EmptyListPanel({
+  mode,
+  totalCampaigns,
+  onCreate,
+  onFaq,
+  onShowDone,
+}: {
+  mode: "open" | "done";
+  totalCampaigns: number;
+  onCreate: () => void;
+  onFaq: () => void;
+  onShowDone: () => void;
+}) {
+  if (mode === "done") {
+    return (
+      <div className="empty-panel surface">
+        <h3>完了した旗はまだありません</h3>
+        <p className="hint">
+          締切後や精算済みの旗がここに並びます。募集中の旗は「募集中」タブをご覧ください。
+        </p>
+      </div>
+    );
+  }
+
+  if (totalCampaigns > 0) {
+    return (
+      <div className="empty-panel surface">
+        <h3>いま募集中の旗はありません</h3>
+        <p className="hint">
+          締切済み・完了の旗は「完了・履歴」にあります。新しい旗が立つとここに表示されます。
+        </p>
+        <div className="empty-actions">
+          <button type="button" className="btn ghost" onClick={onShowDone}>
+            完了・履歴を見る
+          </button>
+          <button type="button" className="btn primary" onClick={onCreate}>
+            旗を揚げる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="empty-panel surface">
+      <h3>まだ旗が立っていません</h3>
+      <p className="empty-lead">
+        助太刀は<strong>本番稼働中</strong>です。最初の旗揚げを待っている状態です。
+      </p>
+      <div className="empty-cols">
+        <div className="empty-col">
+          <div className="empty-col-title">加勢したい人</div>
+          <p>
+            旗が出たらここに並びます。用意しておくもの：
+            <br />
+            <strong>Polygon</strong> · <strong>{TOKEN_SYMBOL}</strong> · ガス用{" "}
+            <strong>POL</strong>
+          </p>
+        </div>
+        <div className="empty-col">
+          <div className="empty-col-title">旗を揚げたい人</div>
+          <p>
+            いまは<strong>アローリスト制</strong>
+            です。許可ウォレットのみ作成できます。
+          </p>
+        </div>
+      </div>
+      <div className="empty-actions">
+        <a className="btn ghost" href="./allowlist.html">
+          AL申請
+        </a>
+        <button type="button" className="btn primary" onClick={onCreate}>
+          旗を揚げる
+        </button>
+        <button type="button" className="btn ghost" onClick={onFaq}>
+          心得
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function JustCreatedSharePanel({
+  info,
+  onOpenDetail,
+  onDismiss,
+}: {
+  info: CreateSuccessInfo;
+  onOpenDetail: () => void;
+  onDismiss: () => void;
+}) {
+  const [status, setStatus] = useState<string | null>(null);
+  const goalStr = formatUnits(info.goalWei, 18);
+  const url = info.address ? campaignDeepLink(info.address) : "";
+  const shareText = buildShareText({
+    title: info.title,
+    kindLabel: kindLabel(info.kind),
+    raised: "0",
+    goal: info.goalWei > 0n ? goalStr : "0",
+    deadlineLabel: formatJpDeadline(info.deadlineUnix),
+    url: url || siteBaseFallback(),
+  });
+
+  return (
+    <section className="just-created surface">
+      <h2>旗が立ちました</h2>
+      <p className="just-created-sub">
+        <span className={`pill ${info.kind}`}>{kindLabel(info.kind)}</span>{" "}
+        <strong>{info.title}</strong>
+      </p>
+      <dl className="meta-grid just-created-meta">
+        <div>
+          <dt>進捗</dt>
+          <dd>
+            0
+            {info.goalWei > 0n ? ` / ${goalStr}` : ""} {TOKEN_SYMBOL}
+          </dd>
+        </div>
+        <div>
+          <dt>締切</dt>
+          <dd>{formatJpDeadline(info.deadlineUnix)}</dd>
+        </div>
+        {info.address && (
+          <div>
+            <dt>直リンク</dt>
+            <dd className="mono-break">{url}</dd>
+          </div>
+        )}
+      </dl>
+      {!info.address && (
+        <p className="hint">アドレス確認中… しばらくして詳細から共有もできます。</p>
+      )}
+      <div className="share-row">
+        <button
+          type="button"
+          className="btn primary"
+          disabled={!info.address}
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(shareText);
+              setStatus("共有文をコピーしました（Discord に貼れます）");
+            } catch {
+              setStatus(url || shareText);
+            }
+          }}
+        >
+          リンクをコピー
+        </button>
+        <a
+          className={`btn ghost${info.address ? "" : " disabled-link"}`}
+          href={info.address ? xIntentUrl(shareText) : undefined}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={!info.address}
+          onClick={(e) => {
+            if (!info.address) e.preventDefault();
+          }}
+        >
+          𝕏 で知らせる
+        </a>
+      </div>
+      <div className="empty-actions">
+        <button
+          type="button"
+          className="btn ghost"
+          disabled={!info.address}
+          onClick={onOpenDetail}
+        >
+          詳細を開く
+        </button>
+        <button type="button" className="btn ghost" onClick={onDismiss}>
+          一覧へ
+        </button>
+      </div>
+      <p className="hint">ヒント: Discord に貼ると仲間がそのまま加勢できます。</p>
+      {status && <p className="status status-ok">{status}</p>}
+    </section>
+  );
+}
+
+function siteBaseFallback(): string {
+  return "https://gpro8.github.io/sukedachi-site/";
+}
+
+function CreatePanel({
+  onCreated,
+}: {
+  onCreated: (info: CreateSuccessInfo) => void;
+}) {
   const { address: user, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
   const [mode, setMode] = useState<"crowdfund" | "charity">("crowdfund");
@@ -1179,6 +1412,13 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [draftNote, setDraftNote] = useState<string | null>(null);
+  /** Snapshot at submit so success handler has stable title/kind/goal */
+  const pendingSnap = useRef<{
+    kind: "crowdfund" | "charity";
+    title: string;
+    goalWei: bigint;
+    deadlineUnix: number;
+  } | null>(null);
 
   // Restore draft once
   useEffect(() => {
@@ -1234,18 +1474,34 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
     createOpen === true || isAllowed === true;
 
   const { writeContract, data: txHash, isPending, reset } = useWriteContract();
-  const { isSuccess, isLoading } = useWaitForTransactionReceipt({ hash: txHash });
+  const {
+    data: receipt,
+    isSuccess,
+    isLoading,
+  } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
-    if (isSuccess) {
-      setMsg("作成完了");
-      clearDraft();
-      setDraftNote(null);
-      setConfirmOpen(false);
-      onCreated();
-      reset();
-    }
-  }, [isSuccess, onCreated, reset]);
+    if (!isSuccess || !receipt) return;
+    const snap = pendingSnap.current;
+    const parsed = parseCreatedFromLogs(receipt.logs as Log[]);
+    const info: CreateSuccessInfo = {
+      address: parsed?.address ?? null,
+      kind: parsed?.kind ?? snap?.kind ?? "crowdfund",
+      title: snap?.title || "旗揚げ",
+      goalWei: parsed?.goalWei ?? snap?.goalWei ?? 0n,
+      deadlineUnix:
+        parsed?.deadlineUnix ||
+        snap?.deadlineUnix ||
+        Math.floor(Date.now() / 1000),
+    };
+    setMsg("作成完了");
+    clearDraft();
+    setDraftNote(null);
+    setConfirmOpen(false);
+    pendingSnap.current = null;
+    onCreated(info);
+    reset();
+  }, [isSuccess, receipt, onCreated, reset]);
 
   const draftPayload = () => ({
     mode,
@@ -1355,9 +1611,16 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
 
       const duration = BigInt(Math.max(1, Math.floor(Number(days) * 86400)));
       const durSec = duration < 3600n ? 3600n : duration;
+      const deadlineUnix = Math.floor(Date.now() / 1000) + Number(durSec);
 
       if (mode === "crowdfund") {
         const g = parseUnits(goal || "0", 18);
+        pendingSnap.current = {
+          kind: "crowdfund",
+          title: title.trim() || "旗揚げ",
+          goalWei: g,
+          deadlineUnix,
+        };
         writeContract({
           address: FACTORY_ADDRESS,
           abi: FACTORY_ABI,
@@ -1367,6 +1630,12 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
         } as any);
       } else {
         const sg = parseUnits(softGoal || "0", 18);
+        pendingSnap.current = {
+          kind: "charity",
+          title: title.trim() || "旗揚げ",
+          goalWei: sg,
+          deadlineUnix,
+        };
         writeContract({
           address: FACTORY_ADDRESS,
           abi: FACTORY_ABI,
@@ -1695,6 +1964,7 @@ export default function App() {
   );
   const [tab, setTab] = useState<"list" | "create" | "me" | "faq">("list");
   const [listFilter, setListFilter] = useState<"open" | "done">("open");
+  const [justCreated, setJustCreated] = useState<CreateSuccessInfo | null>(null);
   const now = useNow();
   const { profile: myProfile } = useProfile(address);
 
@@ -1816,6 +2086,7 @@ export default function App() {
           onClick={() => {
             setTab("list");
             setSelected(null);
+            setJustCreated(null);
           }}
         >
           旗揚げ一覧
@@ -1851,15 +2122,29 @@ export default function App() {
 
       {tab === "create" ? (
         <CreatePanel
-          onCreated={() => {
+          onCreated={(info) => {
             refetchCount();
             refetchAddrs();
+            setJustCreated(info);
+            setSelected(null);
+            setSelectedKindOverride(info.kind);
             setTab("list");
+            if (info.address) {
+              // keep URL ready if they open detail later
+              const url = new URL(window.location.href);
+              url.searchParams.set("c", info.address);
+              window.history.replaceState(
+                {},
+                "",
+                `${url.pathname}${url.search}${url.hash}`
+              );
+            }
           }}
         />
       ) : tab === "me" ? (
         <MyPagePanel
           onOpenCampaign={(addr, kind) => {
+            setJustCreated(null);
             setSelected(addr);
             setSelectedKindOverride(kind === "unknown" ? "crowdfund" : kind);
             setTab("list");
@@ -1880,6 +2165,18 @@ export default function App() {
             ))}
           </div>
         </section>
+      ) : justCreated ? (
+        <JustCreatedSharePanel
+          info={justCreated}
+          onOpenDetail={() => {
+            if (justCreated.address) {
+              setSelected(justCreated.address);
+              setSelectedKindOverride(justCreated.kind);
+            }
+            setJustCreated(null);
+          }}
+          onDismiss={() => setJustCreated(null)}
+        />
       ) : selected ? (
         <DetailPanel
           address={selected}
@@ -1913,11 +2210,13 @@ export default function App() {
             </button>
           </div>
           {filtered.length === 0 ? (
-            <p className="hint">
-              {listFilter === "open"
-                ? "募集中の旗はありません。「完了・履歴」か「旗を揚げる」をご覧ください。"
-                : "完了した旗はまだありません。"}
-            </p>
+            <EmptyListPanel
+              mode={listFilter}
+              totalCampaigns={n}
+              onCreate={() => setTab("create")}
+              onFaq={() => setTab("faq")}
+              onShowDone={() => setListFilter("done")}
+            />
           ) : (
             <div className="grid">
               {filtered.map((row) => (
