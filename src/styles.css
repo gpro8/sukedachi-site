@@ -426,6 +426,9 @@ a {
 }
 .share-row {
   margin: 0.35rem 0 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 .x-link {
   font-weight: 700;

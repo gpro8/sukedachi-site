@@ -47,7 +47,17 @@ import {
   type UserProfile,
 } from "./profile";
 import { clearDraft, fmtDraftTime, loadDraft, saveDraft } from "./drafts";
-import { FAQ_ITEMS, formatXHandleDisplay, normalizeXHandle, xIntentUrl, xProfileUrl } from "./faq";
+import {
+  FAQ_ITEMS,
+  buildShareText,
+  campaignDeepLink,
+  formatJpDeadline,
+  formatXHandleDisplay,
+  normalizeXHandle,
+  parseCampaignParam,
+  xIntentUrl,
+  xProfileUrl,
+} from "./faq";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -537,13 +547,40 @@ function DetailPanel({
           </div>
         )}
         <div className="share-row">
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={async () => {
+              const url = campaignDeepLink(address);
+              const text = buildShareText({
+                title,
+                kindLabel: kindLabel(kind),
+                raised: formatUnits(raised, 18),
+                goal: goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "0",
+                deadlineLabel: formatJpDeadline(deadline),
+                url,
+              });
+              try {
+                await navigator.clipboard.writeText(text);
+                setStatus("共有文をコピーしました（Discord に貼れます）");
+              } catch {
+                setStatus(url);
+              }
+            }}
+          >
+            リンクをコピー
+          </button>
           <a
             className="btn ghost"
             href={xIntentUrl(
-              `【助太刀】${title}\n仲間の旗揚げに加勢しませんか #助太刀 #BushiDAO`,
-              typeof window !== "undefined"
-                ? window.location.href.split("#")[0]
-                : "https://gpro8.github.io/sukedachi-site/"
+              buildShareText({
+                title,
+                kindLabel: kindLabel(kind),
+                raised: formatUnits(raised, 18),
+                goal: goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "0",
+                deadlineLabel: formatJpDeadline(deadline),
+                url: campaignDeepLink(address),
+              })
             )}
             target="_blank"
             rel="noreferrer"
@@ -1660,6 +1697,27 @@ export default function App() {
   const [listFilter, setListFilter] = useState<"open" | "done">("open");
   const now = useNow();
   const { profile: myProfile } = useProfile(address);
+
+  // Open ?c=0x… deep links
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const c = parseCampaignParam(window.location.search, window.location.hash);
+    if (!c) return;
+    setSelected(c as Address);
+    setSelectedKindOverride(null);
+    setTab("list");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (selected) {
+      url.searchParams.set("c", selected);
+    } else {
+      url.searchParams.delete("c");
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [selected]);
 
   // status probes for filter
   const { data: statusProbe } = useReadContracts({

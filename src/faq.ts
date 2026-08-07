@@ -33,7 +33,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "X（旧 Twitter）で共有するには？",
-    a: "各旗の詳細ページにある「Xで知らせる」を押すと、投稿文案付きで X が開きます。プロフィールに X ユーザー名を保存すると旗手チップからプロフィールへリンクします。",
+    a: "各旗の詳細の「リンクをコピー」で Discord 用の共有文、「Xで知らせる」で投稿文案付き共有ができます。URL の ?c=0x… がその旗への直リンクです。プロフィールに X 名を保存すると旗手チップからリンクします。",
   },
   {
     q: "どのネットワーク・トークン？",
@@ -46,6 +46,81 @@ export function xIntentUrl(text: string, url?: string): string {
   u.searchParams.set("text", text);
   if (url) u.searchParams.set("url", url);
   return u.toString();
+}
+
+export function siteBaseUrl(): string {
+  if (typeof window === "undefined") {
+    return "https://gpro8.github.io/sukedachi-site/";
+  }
+  const path = window.location.pathname.replace(/index\.html$/i, "");
+  const base = path.endsWith("/") ? path : `${path}/`;
+  return `${window.location.origin}${base}`;
+}
+
+/** Deep link to a campaign detail. */
+export function campaignDeepLink(campaign: string): string {
+  const base = siteBaseUrl();
+  const u = new URL(base.endsWith("/") ? base : `${base}/`);
+  u.searchParams.set("c", campaign);
+  return u.toString();
+}
+
+export function parseCampaignParam(search = "", hash = ""): string | null {
+  try {
+    const q = new URLSearchParams(
+      search.startsWith("?") ? search.slice(1) : search
+    );
+    const fromQ = q.get("c") || q.get("campaign");
+    if (fromQ && /^0x[a-fA-F0-9]{40}$/.test(fromQ)) return fromQ;
+    const m = hash.match(/0x[a-fA-F0-9]{40}/);
+    if (m) return m[0];
+    const h = hash.startsWith("#") ? hash.slice(1) : hash;
+    if (h.includes("=")) {
+      const hq = new URLSearchParams(h);
+      const fromH = hq.get("c");
+      if (fromH && /^0x[a-fA-F0-9]{40}$/.test(fromH)) return fromH;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function formatJpDeadline(unixSec: number): string {
+  if (!unixSec) return "—";
+  try {
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(unixSec * 1000));
+  } catch {
+    return new Date(unixSec * 1000).toISOString();
+  }
+}
+
+export function buildShareText(opts: {
+  title: string;
+  kindLabel: string;
+  raised: string;
+  goal: string;
+  deadlineLabel: string;
+  url: string;
+}): string {
+  const goalBit =
+    opts.goal && opts.goal !== "0"
+      ? `${opts.raised} / ${opts.goal} JPYC`
+      : `${opts.raised} JPYC`;
+  return [
+    `【助太刀】${opts.title}`,
+    `${opts.kindLabel} · ${goalBit}`,
+    `締切 ${opts.deadlineLabel}`,
+    "仲間の加勢を募集中 #助太刀 #BushiDAO",
+    opts.url,
+  ].join("\n");
 }
 
 export function normalizeXHandle(raw: string): string {
