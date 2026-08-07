@@ -1,11 +1,11 @@
-/** 助太刀 FAQ — static copy */
+/** 助太刀 FAQ — static copy (Polygon · JPYC live) */
 
 export type FaqItem = { q: string; a: string };
 
 export const FAQ_ITEMS: FaqItem[] = [
   {
     q: "助太刀（Sukedachi）とは？",
-    a: "仲間の「旗揚げ」に tJPYC（テスト時）／JPYC（本線）で加勢する場です。皆済（目標達成で受け取り・未達は返金）と義援（期間内 All-in）の二種類があります。BushiDAO の思想に沿い、SaaS に頼らない永続メタデータを目指しています。",
+    a: "仲間の「旗揚げ」に JPYC で加勢する場です。皆済（目標達成で受け取り・未達は返金）と義援（期間内 All-in）の二種類があります。BushiDAO の思想に沿い、SaaS に頼らない永続メタデータを目指しています。",
   },
   {
     q: "皆済の旗と義援の旗の違いは？",
@@ -13,7 +13,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "ガス代は誰が払う？",
-    a: "旗を揚げる人・加勢する人・精算する人が、それぞれの操作のガス（Amoy では POL）を払います。運営が預かって代行する仕組みはありません。",
+    a: "旗を揚げる人・加勢する人・精算する人が、それぞれの操作のガス（Polygon の POL）を払います。運営が預かって代行する仕組みはありません。",
   },
   {
     q: "下書きはどこに保存される？",
@@ -21,7 +21,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   },
   {
     q: "プロフィールのアイコンが高いのはなぜ？",
-    a: "アイコンをオンチェーンに直接書くため、データ量に応じてガスがかかります。名前のみなら安く、画像は小さく圧縮されます。Polygon 本線では通常 Amoy より安く感じることが多いです。",
+    a: "アイコンをオンチェーンに直接書くため、データ量に応じてガスがかかります。名前のみなら安く、画像は小さく圧縮されます。",
   },
   {
     q: "完了した旗はどこで見る？",
@@ -36,8 +36,8 @@ export const FAQ_ITEMS: FaqItem[] = [
     a: "各旗の詳細ページにある「Xで知らせる」を押すと、投稿文案付きで X が開きます。プロフィールに X ユーザー名を保存すると旗手チップからプロフィールへリンクします。",
   },
   {
-    q: "メインネットはいつ？",
-    a: "Amoy での検証とコミュニティフィードバックの後、公式 JPYC と Safe 運用で Polygon 本線へ進む予定です。",
+    q: "どのネットワーク・トークン？",
+    a: "Polygon 上で公式 JPYC を使います。ウォレットを Polygon に接続し、JPYC とガス用の POL をご用意ください。",
   },
 ];
 
@@ -50,21 +50,17 @@ export function xIntentUrl(text: string, url?: string): string {
 
 export function normalizeXHandle(raw: string): string {
   let s = (raw || "").trim();
-  // URLs first
   s = s.replace(/^https?:\/\/(www\.)?(twitter|x)\.com\//i, "");
   s = s.split(/[/?#]/)[0] || "";
-  // strip @ / fullwidth ＠ anywhere leading; remove leftover @
   s = s.replace(/^[＠@]+/u, "");
   s = s.replace(/[＠@]/gu, "");
-  // handles: letters, numbers, underscore
   s = s.replace(/[^\w]/g, "");
-  return s.slice(0, 15); // X max handle length
+  return s.slice(0, 15);
 }
 
 export function xProfileUrl(handle: string): string {
   const h = normalizeXHandle(handle);
   if (!h) return "";
-  // do not encodeURIComponent — keeps clean https://x.com/user
   return `https://x.com/${h}`;
 }
 

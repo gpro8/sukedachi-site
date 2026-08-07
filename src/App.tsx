@@ -399,7 +399,7 @@ function DetailPanel({
   const ensure = useCallback(async () => {
     if (chainId !== CHAIN.id) {
       switchChain?.({ chainId: CHAIN.id });
-      throw new Error("Polygon Amoy に切り替えてください");
+      throw new Error("Polygon に切り替えてください");
     }
   }, [chainId, switchChain]);
 
@@ -855,7 +855,7 @@ function MyPagePanel({
       if (chainId !== CHAIN.id) {
         switchChain?.({ chainId: CHAIN.id });
         setMsgTone("info");
-        setMsg("Amoy に切替後もう一度");
+        setMsg("Polygon に切替後もう一度");
         return;
       }
       const n = name.trim();
@@ -876,8 +876,8 @@ function MyPagePanel({
       setMsgTone("info");
       setMsg(
         imageURI
-          ? "プロフィール保存中…（画像あり · ガスは Amoy で高めになりがち）"
-          : "プロフィール保存中…（名前/X · 安い）"
+          ? "プロフィール保存中…（画像あり · データ量に応じてガスがかかります）"
+          : "プロフィール保存中…（名前/X · ガス控えめ）"
       );
       const hash = await writeContractAsync({
         address: PROFILE_ADDRESS,
@@ -1261,7 +1261,7 @@ function CreatePanel({ onCreated }: { onCreated: () => void }) {
   const validateBeforeSubmit = (): string | null => {
     if (chainId !== CHAIN.id) {
       switchChain?.({ chainId: CHAIN.id });
-      return "Amoy に切替後もう一度";
+      return "Polygon に切替後もう一度";
     }
     const ben = (beneficiary || "").trim() as Address;
     if (!ben || !ben.startsWith("0x") || ben.length !== 42) {
@@ -1747,7 +1747,7 @@ export default function App() {
           className="btn warn wide banner"
           onClick={() => switchChain?.({ chainId: CHAIN.id })}
         >
-          Polygon Amoy に切替
+          Polygon に切替
         </button>
       )}
 
@@ -1881,7 +1881,9 @@ export default function App() {
 
       <footer className="foot">
         <span>助太刀 · BushiDAO</span>
-        <span>Amoy {CHAIN.id}</span>
+        <span>
+          {CHAIN.name} · {TOKEN_SYMBOL}
+        </span>
       </footer>
     </div>
   );

@@ -170,7 +170,7 @@ export function friendlyTxError(e: unknown): string {
     return "ガス代（POL）が不足しています";
   }
   if (low.includes("network") && low.includes("changed")) {
-    return "ネットワークが切り替わりました。Amoy を確認してください";
+    return "ネットワークが切り替わりました。Polygon を確認してください";
   }
   let cut = raw.split(/Request Arguments/i)[0];
   cut = cut.split(/Contract Call/i)[0];

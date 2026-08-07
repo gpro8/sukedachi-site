@@ -8,7 +8,7 @@ import { defaultDeployment } from "./deployments";
 
 const d = defaultDeployment();
 
-/** Active deployment (P1 single row). Prefer reading from deployments.ts. */
+/** Active deployment. Prefer reading from deployments.ts. */
 export const CHAIN = d.chain;
 export const FACTORY_ADDRESS = d.factory as Address;
 export const JPYC_ADDRESS = d.jpyc as Address;
@@ -19,11 +19,7 @@ export const FACTORY_DEPLOY_BLOCK = d.factoryDeployBlock;
 export const MIN_GOAL_WHOLE = d.minGoalWhole;
 export const MIN_DURATION_DAYS = d.minDurationDays;
 
-/** @deprecated wrong CA — no code on Polygon. Kept so old notes grep clean. */
-export const LEGACY_WRONG_JPYC =
-  "0x8549E82239a88f463ab6E55Ad1895b629a00Def3" as Address;
-
-/** Official Polygon JPYC (verified) */
+/** Official Polygon JPYC */
 export const MAINNET_JPYC =
   "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29" as Address;
 
@@ -35,14 +31,9 @@ export const PROFILE_ABI = profileAbi as any;
 
 export const RPC_URL =
   (import.meta.env.VITE_RPC_URL as string | undefined) ||
-  (d.chainId === 137
-    ? "https://polygon-bor-rpc.publicnode.com"
-    : "https://polygon-amoy-bor-rpc.publicnode.com");
+  "https://polygon-bor-rpc.publicnode.com";
 
-export const EXPLORER =
-  d.chainId === 137
-    ? "https://polygonscan.com"
-    : "https://amoy.polygonscan.com";
+export const EXPLORER = "https://polygonscan.com";
 
 export function arweaveToHttp(uri: string): string {
   if (!uri) return "";

@@ -1,9 +1,9 @@
 import type { Address } from "viem";
-import { polygon, polygonAmoy } from "viem/chains";
+import { polygon } from "viem/chains";
 import type { Chain } from "viem";
 
 /**
- * Deployment registry — P1 length 1; P2 append only (never drop rows).
+ * Deployment registry — append only for P2 multi-chain (never drop rows).
  * Money history lives on each factory forever; UI unions this list.
  */
 export type SukedachiDeployment = {
@@ -23,7 +23,7 @@ export type SukedachiDeployment = {
   createOpenDefault: boolean;
 };
 
-/** Polygon mainnet — live 2026-08-06 */
+/** Polygon · JPYC — live */
 export const POLYGON_MAINNET: SukedachiDeployment = {
   id: "polygon-jpyc-v1",
   chainId: 137,
@@ -41,29 +41,8 @@ export const POLYGON_MAINNET: SukedachiDeployment = {
   createOpenDefault: false,
 };
 
-/** Amoy dogfood — kept in registry; not default */
-export const AMOY_TESTNET: SukedachiDeployment = {
-  id: "amoy-tjpyc-v2",
-  chainId: 80002,
-  chain: polygonAmoy,
-  label: "Amoy · tJPYC (test)",
-  jpyc: "0x996727D565dFC452491f961Ad370fe3F0B5dD124",
-  jpycDecimals: 18,
-  tokenSymbol: "tJPYC",
-  factory: "0x4290d1C5252E62EF2633EB1adB4584De3EEbE0CD",
-  profile: "0x5260D0782137A8B014979754756D5e9e6EF0287F",
-  factoryDeployBlock: 43_970_575n,
-  status: "testnet",
-  minGoalWhole: 100,
-  minDurationDays: 0,
-  createOpenDefault: true,
-};
-
-/** Active list — canonical mainnet first; never drop rows. */
-export const DEPLOYMENTS: SukedachiDeployment[] = [
-  POLYGON_MAINNET,
-  // AMOY_TESTNET, // re-enable only for dogfood UI
-];
+/** Active list — canonical first; never drop historical rows when adding chains. */
+export const DEPLOYMENTS: SukedachiDeployment[] = [POLYGON_MAINNET];
 
 export function activeDeployments(): SukedachiDeployment[] {
   return DEPLOYMENTS.filter(

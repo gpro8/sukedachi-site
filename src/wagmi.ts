@@ -1,12 +1,12 @@
 import { http, createConfig } from "wagmi";
-import { polygonAmoy } from "wagmi/chains";
+import { polygon } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 import { RPC_URL } from "./config";
 
 export const wagmiConfig = createConfig({
-  chains: [polygonAmoy],
+  chains: [polygon],
   connectors: [injected({ shimDisconnect: true })],
   transports: {
-    [polygonAmoy.id]: http(RPC_URL),
+    [polygon.id]: http(RPC_URL),
   },
 });

@@ -1,52 +1,24 @@
-# Sukedachi Site (Phase 2)
+# Sukedachi site
 
-JP-first UI for BushiDAO **助太刀** on Polygon Amoy.
+JP-first UI for BushiDAO **助太刀** on **Polygon** (JPYC).
 
-## Amoy addresses
+## Live (Polygon)
 
 | | |
 |--|--|
-| Factory | `0xBE58e02115F053F9e90f6936CFFB4c05b335c70B` |
-| tJPYC | `0x996727D565dFC452491f961Ad370fe3F0B5dD124` |
+| Factory | `0xe1bc023Cc8703f957f4a200B56f85BeA74a3253A` |
+| Profile | `0xA8C536c4f555CA5F8b7Ff549F95D3c599FDB0FBE` |
+| JPYC | `0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29` |
+| Site | https://gpro8.github.io/sukedachi-site/ |
 
-Mainnet JPYC (future): `0x8549E82239a88f463ab6E55Ad1895b629a00Def3`
+Wallet: MetaMask → **Polygon**. Need **JPYC** + **POL** for gas.
 
 ## Dev
 
 ```bash
-cd sukedachi-site
 npm install
 npm run dev
-```
-
-Wallet: MetaMask → Polygon Amoy. Need tJPYC (minted to deployer) + POL.
-
-## Features
-
-- List campaigns from factory  
-- Detail: cover · title · description · リターン · pledge/donate · finalize · claim  
-- **Create form:** タイトル / 説明 / リターン / 画像URL → **data URI** (free forever, no Pinata)  
-- Advanced: paste raw metadata URI if needed  
-- JP-first · AoN vs All-in clarity  
-
-## Build (GitHub Pages / static)
-
-```bash
 npm run build
-# output: dist/  (base: ./  → project pages OK)
-# 七宝: public/patterns/shippo.svg via BASE_URL
 ```
 
-### Publish to GitHub Pages
-
-1. Create public repo e.g. `sukedachi-site` under your GitHub user  
-2. Push `main`  
-3. **Settings → Pages → Source: GitHub Actions**  
-4. Optional secret: `VITE_RPC_URL`  
-5. Site: `https://<user>.github.io/sukedachi-site/`
-
-```bash
-cd sukedachi-site
-git remote add origin git@github.com:YOUR_USER/sukedachi-site.git
-git push -u origin main
-```
+Deploy production assets to the `gh-pages` branch (GitHub Pages source = `gh-pages` / root).
