@@ -58,6 +58,7 @@ import {
   xIntentUrl,
   xProfileUrl,
 } from "./faq";
+import { ContributorsBlock } from "./ContributorsBlock";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -441,6 +442,7 @@ function DetailPanel({
   const [meta, setMeta] = useState<Meta>({});
   const [amount, setAmount] = useState("100");
   const [status, setStatus] = useState<string | null>(null);
+  const [contribKey, setContribKey] = useState(0);
 
   useEffect(() => {
     let c = false;
@@ -461,6 +463,7 @@ function DetailPanel({
     if (isSuccess) {
       setStatus("確認済み");
       refetch();
+      setContribKey((k) => k + 1);
       reset();
     }
   }, [isSuccess, refetch, reset]);
@@ -684,6 +687,12 @@ function DetailPanel({
           </span>
         </div>
       </div>
+
+      <ContributorsBlock
+        campaign={address}
+        kind={kind === "unknown" ? "crowdfund" : kind}
+        refreshKey={contribKey}
+      />
 
       <dl className="meta-grid">
         <div>
