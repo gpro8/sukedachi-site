@@ -2,7 +2,7 @@
 
 JSON-RPC proxy so the **Alchemy key never ships in the browser bundle**.
 
-- Live: `https://sukedachi-polygon-rpc.bushidao-exam.workers.dev`
+- Live: `https://sukedachi-polygon-rpc.bushidao.workers.dev`
 - Secret: `POLYGON_RPC_URL` (wrangler secret)
 - CORS allowlist: `ALLOWED_ORIGINS` in `wrangler.toml`
 

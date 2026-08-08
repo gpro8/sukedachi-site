@@ -71,7 +71,7 @@ export function campaignDeepLink(campaign: string): string {
  * Avoids GH Pages SPA + og:url root mismatch that drops X cards on ?c= links.
  */
 export const SHARE_OG_BASE =
-  "https://sukedachi-polygon-rpc.bushidao-exam.workers.dev/share";
+  "https://sukedachi-polygon-rpc.bushidao.workers.dev/share";
 
 export function campaignShareLink(campaign: string): string {
   const u = new URL(SHARE_OG_BASE);

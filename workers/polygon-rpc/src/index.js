@@ -285,7 +285,7 @@ export default {
         return new Response("bad c", { status: 400 });
       }
       const site = `https://gpro8.github.io/sukedachi-site/?c=${c}`;
-      const shareSelf = `https://sukedachi-polygon-rpc.bushidao-exam.workers.dev/share?c=${c}`;
+      const shareSelf = `https://sukedachi-polygon-rpc.bushidao.workers.dev/share?c=${c}`;
       const img = "https://gpro8.github.io/sukedachi-site/og-share.jpg";
       const title = "助太刀 Sukedachi — この旗に加勢";
       const desc =
