@@ -1,7 +1,9 @@
 /**
  * Sukedachi Polygon RPC proxy + /contributors aggregator.
- * Secret POLYGON_RPC_URL = Alchemy (reads). Logs use public full-range node
- * because Alchemy free eth_getLogs max range is 10 blocks.
+ *
+ * Secret POLYGON_RPC_URL = Alchemy Polygon HTTPS (Worker-only).
+ * Contributors use alchemy_getAssetTransfers (full history on free tier)
+ * instead of eth_getLogs 10-block chunks.
  */
 
 const ALLOWED_METHODS = new Set([
@@ -22,20 +24,13 @@ const ALLOWED_METHODS = new Set([
   "eth_getTransactionByHash",
   "eth_getTransactionReceipt",
   "eth_getLogs",
+  "alchemy_getAssetTransfers",
 ]);
 
-const LOG_RPC_DEFAULT = "https://polygon-bor.publicnode.com";
-/** publicnode-friendly chunk under 10k */
-const LOG_CHUNK = 9000;
-const LOOKBACK_BLOCKS = 200000;
 const FACTORY_DEPLOY_BLOCK = 91568548;
 const PROFILE = "0xA8C536c4f555CA5F8b7Ff549F95D3c599FDB0FBE";
+const JPYC = "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29";
 const PROFILE_OF_SELECTOR = "2f8eb9cb";
-
-const TOPIC_PLEDGED =
-  "0xb8765119b6cc15a7b5d15b95f6c505f2f3c24754824af1892788aad4c0e9945f";
-const TOPIC_DONATED =
-  "0x4928895ba6723e8e27b15f32e4c3054a1b6c7f8c03f133558d6fa42b3928d14c";
 
 function parseOrigins(env) {
   return (env.ALLOWED_ORIGINS || "")
@@ -90,45 +85,6 @@ async function rpc(url, method, params) {
   return j.result;
 }
 
-function topicAddress(topic) {
-  if (!topic || topic.length < 66) return null;
-  return ("0x" + topic.slice(26)).toLowerCase();
-}
-
-function decodeAmountData(data) {
-  if (!data || data.length < 66) return 0n;
-  return BigInt("0x" + data.slice(2, 66));
-}
-
-async function getLogsChunked(logRpc, address, topic0, fromBlock, toBlock) {
-  const out = [];
-  let from = fromBlock;
-  while (from <= toBlock) {
-    const end = Math.min(from + LOG_CHUNK - 1, toBlock);
-    let attempt = 0;
-    for (;;) {
-      try {
-        const logs = await rpc(logRpc, "eth_getLogs", [
-          {
-            address,
-            fromBlock: "0x" + from.toString(16),
-            toBlock: "0x" + end.toString(16),
-            topics: [topic0],
-          },
-        ]);
-        if (Array.isArray(logs)) out.push(...logs);
-        break;
-      } catch (e) {
-        attempt++;
-        if (attempt >= 4) throw e;
-        await new Promise((r) => setTimeout(r, 200 * attempt));
-      }
-    }
-    from = end + 1;
-  }
-  return out;
-}
-
 function decodeAbiStringTuple3(hex) {
   if (!hex || hex === "0x" || hex.length < 2 + 64 * 3) {
     return { name: "", imageURI: "", xHandle: "" };
@@ -159,102 +115,100 @@ async function profileOf(alchemy, wallet) {
     PROFILE_OF_SELECTOR +
     wallet.toLowerCase().replace(/^0x/, "").padStart(64, "0");
   try {
-    const raw = await rpc(alchemy, "eth_call", [{ to: PROFILE, data }, "latest"]);
+    const raw = await rpc(alchemy, "eth_call", [
+      { to: PROFILE, data },
+      "latest",
+    ]);
     return decodeAbiStringTuple3(raw);
   } catch {
     return { name: "", imageURI: "", xHandle: "" };
   }
 }
 
-function encodeAggregate3(calls) {
-  // aggregate3((address target, bool allowFailure, bytes callData)[])
-  const sel = "82ad56cb";
-  const headSize = 32; // offset to array
-  // dynamic array at 0x20
-  let data = sel;
-  data += "20".padStart(64, "0"); // offset
-  data += calls.length.toString(16).padStart(64, "0");
-  // each tuple is head: target, allowFailure, offset-to-bytes — then tails
-  // Standard ABI encoding for dynamic array of (address,bool,bytes)
-  const heads = [];
-  const tails = [];
-  let tailOffset = calls.length * 32 * 3; // relative to start of tuple array content... 
-  // Simpler approach: build with known layout
-  // For each call, tuple head is 3 words; bytes are dynamic
-  // Array of tuples with dynamic bytes: each element offset first
-  const elHeads = [];
-  const elTails = [];
-  let elTailPos = 32 * calls.length; // offsets relative to start of array data (after length)
-  for (const c of calls) {
-    elHeads.push(elTailPos.toString(16).padStart(64, "0"));
-    const target = c.target.toLowerCase().replace(/^0x/, "").padStart(64, "0");
-    const allow = (c.allowFailure ? 1 : 0).toString(16).padStart(64, "0");
-    const cd = c.callData.replace(/^0x/, "");
-    const cdLen = (cd.length / 2).toString(16).padStart(64, "0");
-    const cdPad = cd + "0".repeat((64 - (cd.length % 64)) % 64);
-    // tuple body: address, bool, offset(0x60), length, data
-    const tuple =
-      target +
-      allow +
-      "60".padStart(64, "0") +
-      cdLen +
-      cdPad;
-    elTails.push(tuple);
-    elTailPos += tuple.length / 2;
-  }
-  data += elHeads.join("") + elTails.join("");
-  return "0x" + data;
-}
-
-function decodeAggregate3(hex, n) {
-  // returns Result[] (bool success, bytes returnData)[]
-  const profiles = [];
-  if (!hex || hex === "0x") {
-    for (let i = 0; i < n; i++) profiles.push({ name: "", imageURI: "", xHandle: "" });
-    return profiles;
-  }
-  try {
-    const buf = hex.slice(2);
-    const arrOff = parseInt(buf.slice(0, 64), 16) * 2;
-    const len = parseInt(buf.slice(arrOff, arrOff + 64), 16);
-    const base = arrOff + 64;
-    for (let i = 0; i < Math.min(len, n); i++) {
-      const tupOff =
-        base + parseInt(buf.slice(base + i * 64, base + i * 64 + 64), 16) * 2;
-      // success at tupOff, bytes offset at tupOff+64
-      const success = parseInt(buf.slice(tupOff, tupOff + 64), 16) === 1;
-      const bytesOff =
-        tupOff + parseInt(buf.slice(tupOff + 64, tupOff + 128), 16) * 2;
-      const blen = parseInt(buf.slice(bytesOff, bytesOff + 64), 16);
-      const bhex = "0x" + buf.slice(bytesOff + 64, bytesOff + 64 + blen * 2);
-      profiles.push(
-        success ? decodeAbiStringTuple3(bhex) : { name: "", imageURI: "", xHandle: "" }
-      );
+/**
+ * Inbound JPYC to campaign ≈ 加勢/義援 (full history via Transfers API).
+ */
+async function fetchInboundJpyc(alchemy, campaign) {
+  const map = new Map(); // lower addr -> { address, total: bigint, lastBlock: number }
+  let pageKey = undefined;
+  let pages = 0;
+  do {
+    const params = {
+      fromBlock: "0x" + FACTORY_DEPLOY_BLOCK.toString(16),
+      toBlock: "latest",
+      toAddress: campaign,
+      contractAddresses: [JPYC],
+      category: ["erc20"],
+      excludeZeroValue: true,
+      maxCount: "0x3e8",
+      order: "asc",
+      withMetadata: false,
+    };
+    if (pageKey) params.pageKey = pageKey;
+    const result = await rpc(alchemy, "alchemy_getAssetTransfers", [params]);
+    const transfers = (result && result.transfers) || [];
+    for (const t of transfers) {
+      const from = (t.from || "").toLowerCase();
+      if (!/^0x[a-f0-9]{40}$/.test(from)) continue;
+      let amount = 0n;
+      const raw = t.rawContract && t.rawContract.value;
+      if (raw) {
+        amount = BigInt(raw);
+      } else if (t.value != null) {
+        // decimal string → 18 dec JPYC
+        const s = String(t.value);
+        if (s.includes(".")) {
+          const [a, b = ""] = s.split(".");
+          const frac = (b + "000000000000000000").slice(0, 18);
+          amount = BigInt(a || "0") * 10n ** 18n + BigInt(frac || "0");
+        } else {
+          amount = BigInt(s || "0") * 10n ** 18n;
+        }
+      }
+      if (amount <= 0n) continue;
+      let bn = 0;
+      if (t.blockNum) {
+        bn =
+          typeof t.blockNum === "string" && t.blockNum.startsWith("0x")
+            ? parseInt(t.blockNum, 16)
+            : parseInt(String(t.blockNum), 10) || 0;
+      }
+      const prev = map.get(from);
+      if (!prev) {
+        map.set(from, { address: from, total: amount, lastBlock: bn });
+      } else {
+        map.set(from, {
+          address: prev.address,
+          total: prev.total + amount,
+          lastBlock: Math.max(prev.lastBlock, bn),
+        });
+      }
     }
-    while (profiles.length < n) profiles.push({ name: "", imageURI: "", xHandle: "" });
-    return profiles;
-  } catch {
-    return Array.from({ length: n }, () => ({
-      name: "",
-      imageURI: "",
-      xHandle: "",
-    }));
-  }
+    pageKey = result && result.pageKey;
+    pages++;
+  } while (pageKey && pages < 20);
+
+  return [...map.values()].sort((a, b) => {
+    if (a.total === b.total) return b.lastBlock - a.lastBlock;
+    return a.total > b.total ? -1 : 1;
+  });
 }
 
 async function handleContributors(request, env, cors) {
   const url = new URL(request.url);
   const address = (url.searchParams.get("address") || "").toLowerCase();
-  const kind = url.searchParams.get("kind") || "crowdfund";
+  // kind reserved for future (charity vs crowdfund same inbound JPYC path)
   if (!/^0x[a-f0-9]{40}$/.test(address)) {
     return json({ error: "bad_address" }, 400, cors);
   }
   const alchemy = env.POLYGON_RPC_URL;
-  const logRpc = env.LOG_RPC_URL || LOG_RPC_DEFAULT;
   if (!alchemy) return json({ error: "misconfigured" }, 500, cors);
 
   const cache = caches.default;
-  const cacheReq = new Request(url.toString(), { method: "GET" });
+  // bust older incomplete caches when logic changes
+  const cacheUrl = new URL(url.toString());
+  cacheUrl.searchParams.set("v", "3");
+  const cacheReq = new Request(cacheUrl.toString(), { method: "GET" });
   const hit = await cache.match(cacheReq);
   if (hit) {
     const h = new Headers(hit.headers);
@@ -262,50 +216,10 @@ async function handleContributors(request, env, cors) {
     return new Response(hit.body, { status: hit.status, headers: h });
   }
 
-  const latestHex = await rpc(logRpc, "eth_blockNumber", []);
-  const latest = parseInt(latestHex, 16);
-  // Free log nodes prune; keep a sliding window that still covers live campaigns.
-  const LOOKBACK = 100000;
-  let from = Math.max(FACTORY_DEPLOY_BLOCK, latest - LOOKBACK);
-  if (from > latest) from = Math.max(0, latest - 10000);
-  const topic = kind === "charity" ? TOPIC_DONATED : TOPIC_PLEDGED;
+  const sorted = await fetchInboundJpyc(alchemy, address);
 
-  let logs;
-  try {
-    logs = await getLogsChunked(logRpc, address, topic, from, latest);
-  } catch (e) {
-    const msg = e && e.message ? e.message : "";
-    if (/prun|history/i.test(msg)) {
-      from = Math.max(0, latest - 40000);
-      logs = await getLogsChunked(logRpc, address, topic, from, latest);
-    } else {
-      throw e;
-    }
-  }
-  const map = new Map();
-  for (const log of logs) {
-    const who = topicAddress(log.topics && log.topics[1]);
-    if (!who) continue;
-    const amount = decodeAmountData(log.data);
-    const bn = parseInt(log.blockNumber, 16);
-    const prev = map.get(who);
-    if (!prev) map.set(who, { address: who, total: amount, lastBlock: bn });
-    else
-      map.set(who, {
-        address: who,
-        total: prev.total + amount,
-        lastBlock: Math.max(prev.lastBlock, bn),
-      });
-  }
-
-  const sorted = [...map.values()].sort((a, b) => {
-    if (a.total === b.total) return b.lastBlock - a.lastBlock;
-    return a.total > b.total ? -1 : 1;
-  });
-
-  // Profiles via Alchemy eth_call (cap 20 to stay under Worker subrequest limits)
   const rows = [];
-  const cap = sorted.slice(0, 20);
+  const cap = sorted.slice(0, 40);
   for (const r of cap) {
     const profile = await profileOf(alchemy, r.address);
     rows.push({
@@ -315,7 +229,7 @@ async function handleContributors(request, env, cors) {
       profile,
     });
   }
-  for (const r of sorted.slice(20)) {
+  for (const r of sorted.slice(40)) {
     rows.push({
       address: r.address,
       total: r.total.toString(),
@@ -324,12 +238,17 @@ async function handleContributors(request, env, cors) {
     });
   }
 
-  const body = JSON.stringify({ ok: true, count: rows.length, rows });
+  const body = JSON.stringify({
+    ok: true,
+    count: rows.length,
+    source: "alchemy_getAssetTransfers",
+    rows,
+  });
   const res = new Response(body, {
     status: 200,
     headers: {
       "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=90",
+      "Cache-Control": "public, max-age=60",
       ...cors,
     },
   });
@@ -352,7 +271,10 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
-    if (request.method === "GET" && url.pathname.replace(/\/$/, "") === "/contributors") {
+    if (
+      request.method === "GET" &&
+      url.pathname.replace(/\/$/, "") === "/contributors"
+    ) {
       if (!originAllowed(origin, allowed)) {
         return json({ error: "origin_not_allowed" }, 403, cors);
       }
@@ -375,7 +297,10 @@ export default {
         {
           ok: true,
           service: "sukedachi-polygon-rpc",
-          routes: ["POST / json-rpc", "GET /contributors?address=0x&kind=crowdfund"],
+          routes: [
+            "POST / json-rpc",
+            "GET /contributors?address=0x&kind=crowdfund",
+          ],
         },
         200,
         cors
@@ -432,7 +357,11 @@ export default {
       });
     } catch {
       return json(
-        { jsonrpc: "2.0", id: null, error: { code: -32000, message: "upstream_failed" } },
+        {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "upstream_failed" },
+        },
         502,
         cors
       );
