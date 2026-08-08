@@ -206,14 +206,18 @@ async function handleContributors(request, env, cors) {
 
   const cache = caches.default;
   // bust older incomplete caches when logic changes
-  const cacheUrl = new URL(url.toString());
-  cacheUrl.searchParams.set("v", "3");
+  const cacheUrl = new URL(
+    `https://sukedachi-contrib.cache/v4/${address}/${url.searchParams.get("kind") || "crowdfund"}`
+  );
   const cacheReq = new Request(cacheUrl.toString(), { method: "GET" });
-  const hit = await cache.match(cacheReq);
-  if (hit) {
-    const h = new Headers(hit.headers);
-    Object.entries(cors).forEach(([k, v]) => h.set(k, v));
-    return new Response(hit.body, { status: hit.status, headers: h });
+  const bust = url.searchParams.get("nocache") === "1";
+  if (!bust) {
+    const hit = await cache.match(cacheReq);
+    if (hit) {
+      const h = new Headers(hit.headers);
+      Object.entries(cors).forEach(([k, v]) => h.set(k, v));
+      return new Response(hit.body, { status: hit.status, headers: h });
+    }
   }
 
   const sorted = await fetchInboundJpyc(alchemy, address);
