@@ -341,6 +341,20 @@ function CampaignCard({
             <CreatorChip address={creator} profile={creatorProfile} compact />
           </div>
         )}
+        <div className="card-bar-wrap" aria-hidden>
+          <div className="card-bar">
+            <div
+              className="card-bar-fill"
+              style={{
+                width: `${
+                  goalOrSoft > 0n
+                    ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+        </div>
         <div className="card-stats">
           <span>
             {formatUnits(raised, 18)}
