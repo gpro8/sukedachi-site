@@ -31,7 +31,8 @@ export const PROFILE_ABI = profileAbi as any;
 
 export const RPC_URL =
   (import.meta.env.VITE_RPC_URL as string | undefined) ||
-  "https://polygon-bor-rpc.publicnode.com";
+  /** Cloudflare Worker proxy — Alchemy key stays server-side */
+  "https://sukedachi-polygon-rpc.bushidao-exam.workers.dev";
 
 export const EXPLORER = "https://polygonscan.com";
 
