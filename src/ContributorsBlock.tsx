@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatUnits, type Address } from "viem";
 import { TOKEN_SYMBOL, shortAddr } from "./config";
 import {
   fetchContributors,
+  invalidateContributorCache,
   type ContributorRow,
 } from "./contributors";
 import {
@@ -24,39 +25,54 @@ export function ContributorsBlock({
 }: {
   campaign: Address;
   kind: "crowdfund" | "charity" | "unknown";
-  /** Bump after a successful pledge/donate to refetch */
+  /** Bump after a successful pledge/donate to allow refresh */
   refreshKey?: number;
 }) {
   const [rows, setRows] = useState<ContributorRow[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setErr(null);
-    fetchContributors(campaign, kind)
-      .then((list) => {
-        if (!cancelled) {
-          setRows(list);
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setErr(e instanceof Error ? e.message : "読込に失敗しました");
-          setRows([]);
-          setLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [campaign, kind, refreshKey]);
+  /** false until user clicks — no auto RPC on every page view */
+  const [opened, setOpened] = useState(false);
 
   const title =
     kind === "charity" ? "義援した仲間" : "加勢した仲間";
+
+  const load = useCallback(
+    async (bypassCache = false) => {
+      setLoading(true);
+      setErr(null);
+      try {
+        if (bypassCache) {
+          invalidateContributorCache(campaign, kind);
+        }
+        const list = await fetchContributors(campaign, kind, {
+          bypassCache,
+        });
+        setRows(list);
+      } catch (e) {
+        setErr(
+          e instanceof Error ? e.message : "仲間リストの取得に失敗しました。"
+        );
+        setRows([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [campaign, kind]
+  );
+
+  // After own 加勢 success: if already opened, soft-refetch once
+  useEffect(() => {
+    if (!opened || refreshKey === 0) return;
+    void load(true);
+  }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onOpen = () => {
+    setOpened(true);
+    void load(false);
+  };
+
   const shown =
     rows && (expanded ? rows : rows.slice(0, PREVIEW));
   const more = rows && rows.length > PREVIEW ? rows.length - PREVIEW : 0;
@@ -73,15 +89,39 @@ export function ContributorsBlock({
         {loading && <span className="contributors-status">読込中…</span>}
       </div>
 
-      {err && <p className="hint contributors-err">{err}</p>}
+      {!opened && !loading && (
+        <div className="contributors-cta">
+          <p className="contributors-empty">
+            誰が加勢したかをオンチェーン履歴から表示します（ボタンを押したときだけ読み込み）。
+          </p>
+          <button type="button" className="btn ghost" onClick={onOpen}>
+            仲間を表示
+          </button>
+        </div>
+      )}
 
-      {!loading && rows && rows.length === 0 && !err && (
+      {opened && err && (
+        <div className="contributors-cta">
+          <p className="hint contributors-err">{err}</p>
+          <button
+            type="button"
+            className="btn ghost"
+            disabled={loading}
+            onClick={() => void load(true)}
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
+      {opened && !loading && rows && rows.length === 0 && !err && (
         <p className="contributors-empty">
-          まだ{kind === "charity" ? "義援" : "加勢"}はありません。最初の仲間になりませんか。
+          まだ{kind === "charity" ? "義援" : "加勢"}
+          はありません。最初の仲間になりませんか。
         </p>
       )}
 
-      {shown && shown.length > 0 && (
+      {opened && shown && shown.length > 0 && (
         <ul className="contributors-list">
           {shown.map((r) => {
             const show = hasDisplayProfile(r.profile);
@@ -124,13 +164,24 @@ export function ContributorsBlock({
         </ul>
       )}
 
-      {!loading && more > 0 && (
+      {opened && !loading && more > 0 && (
         <button
           type="button"
           className="contributors-more"
           onClick={() => setExpanded((v) => !v)}
         >
           {expanded ? "折りたたむ" : `すべて表示（+${more}）`}
+        </button>
+      )}
+
+      {opened && !loading && rows && rows.length > 0 && (
+        <button
+          type="button"
+          className="contributors-more"
+          disabled={loading}
+          onClick={() => void load(true)}
+        >
+          更新
         </button>
       )}
     </div>
