@@ -277,6 +277,61 @@ export default {
 
     if (
       request.method === "GET" &&
+      url.pathname.replace(/\/$/, "") === "/share"
+    ) {
+      // Public: Twitterbot/Discordbot have no Origin — must not require CORS origin.
+      const c = (url.searchParams.get("c") || "").toLowerCase();
+      if (!/^0x[a-f0-9]{40}$/.test(c)) {
+        return new Response("bad c", { status: 400 });
+      }
+      const site = `https://gpro8.github.io/sukedachi-site/?c=${c}`;
+      const shareSelf = `https://sukedachi-polygon-rpc.bushidao-exam.workers.dev/share?c=${c}`;
+      const img = "https://gpro8.github.io/sukedachi-site/og-share.jpg";
+      const title = "助太刀 Sukedachi — この旗に加勢";
+      const desc =
+        "Polygon · JPYC。皆済は目標未達なら返金、義援は All-in。BushiDAO。";
+      const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>${title}</title>
+<meta name="description" content="${desc}"/>
+<meta property="og:type" content="website"/>
+<meta property="og:locale" content="ja_JP"/>
+<meta property="og:site_name" content="助太刀 Sukedachi"/>
+<meta property="og:title" content="${title}"/>
+<meta property="og:description" content="${desc}"/>
+<meta property="og:url" content="${shareSelf}"/>
+<meta property="og:image" content="${img}"/>
+<meta property="og:image:type" content="image/jpeg"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="${title}"/>
+<meta name="twitter:description" content="${desc}"/>
+<meta name="twitter:image" content="${img}"/>
+<meta name="twitter:image:alt" content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"/>
+<link rel="canonical" href="${site}"/>
+<meta http-equiv="refresh" content="0;url=${site}"/>
+</head>
+<body style="font-family:sans-serif;padding:2rem;background:#f7f1e6;color:#1f3134">
+<p><strong>助太刀</strong> — 旗ページへ移動します。</p>
+<p><a href="${site}">${site}</a></p>
+</body>
+</html>`;
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300",
+        },
+      });
+    }
+
+    if (
+      request.method === "GET" &&
       url.pathname.replace(/\/$/, "") === "/contributors"
     ) {
       if (!originAllowed(origin, allowed)) {
@@ -304,6 +359,7 @@ export default {
           routes: [
             "POST / json-rpc",
             "GET /contributors?address=0x&kind=crowdfund",
+            "GET /share?c=0x — OG unfurl for X/Discord",
           ],
         },
         200,

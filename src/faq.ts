@@ -57,10 +57,24 @@ export function siteBaseUrl(): string {
   return `${window.location.origin}${base}`;
 }
 
-/** Deep link to a campaign detail. */
+/** Deep link to a campaign detail (site SPA). */
 export function campaignDeepLink(campaign: string): string {
   const base = siteBaseUrl();
   const u = new URL(base.endsWith("/") ? base : `${base}/`);
+  u.searchParams.set("c", campaign);
+  return u.toString();
+}
+
+/**
+ * Public share URL for X / Discord unfurl.
+ * Worker returns static OG HTML (crawlers) + redirect to site (humans).
+ * Avoids GH Pages SPA + og:url root mismatch that drops X cards on ?c= links.
+ */
+export const SHARE_OG_BASE =
+  "https://sukedachi-polygon-rpc.bushidao-exam.workers.dev/share";
+
+export function campaignShareLink(campaign: string): string {
+  const u = new URL(SHARE_OG_BASE);
   u.searchParams.set("c", campaign);
   return u.toString();
 }

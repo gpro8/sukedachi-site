@@ -51,6 +51,7 @@ import {
   FAQ_ITEMS,
   buildShareText,
   campaignDeepLink,
+  campaignShareLink,
   formatJpDeadline,
   formatXHandleDisplay,
   normalizeXHandle,
@@ -613,7 +614,7 @@ function DetailPanel({
             type="button"
             className="btn ghost"
             onClick={async () => {
-              const url = campaignDeepLink(address);
+              const url = campaignShareLink(address);
               const text = buildShareText({
                 title,
                 kindLabel: kindLabel(kind),
@@ -624,7 +625,7 @@ function DetailPanel({
               });
               try {
                 await navigator.clipboard.writeText(text);
-                setStatus("共有文をコピーしました（Discord に貼れます）");
+                setStatus("共有文をコピーしました（Discord / X に貼れます）");
               } catch {
                 setStatus(url);
               }
@@ -641,7 +642,7 @@ function DetailPanel({
                 raised: formatUnits(raised, 18),
                 goal: goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "0",
                 deadlineLabel: formatJpDeadline(deadline),
-                url: campaignDeepLink(address),
+                url: campaignShareLink(address),
               })
             )}
             target="_blank"
@@ -1319,7 +1320,7 @@ function JustCreatedSharePanel({
 }) {
   const [status, setStatus] = useState<string | null>(null);
   const goalStr = formatUnits(info.goalWei, 18);
-  const url = info.address ? campaignDeepLink(info.address) : "";
+  const url = info.address ? campaignShareLink(info.address) : "";
   const shareText = buildShareText({
     title: info.title,
     kindLabel: kindLabel(info.kind),

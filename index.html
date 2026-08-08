@@ -8,7 +8,11 @@
       name="description"
       content="BushiDAO 助太刀 — 仲間の旗揚げに JPYC で加勢。皆済（All-or-Nothing）と義援。Polygon 本番。"
     />
-    <link rel="canonical" href="https://gpro8.github.io/sukedachi-site/" />
+    <!--
+      Do NOT set og:url / canonical to root only.
+      X drops cards when shared URL (?c=0x…) ≠ og:url (root).
+      Per-flag unfurl uses Worker /share?c=0x… (see faq.campaignShareLink).
+    -->
 
     <!-- Open Graph / Discord / generic unfurl -->
     <meta property="og:type" content="website" />
@@ -19,14 +23,17 @@
       property="og:description"
       content="Polygon · JPYC。皆済は目標未達なら返金、義援は All-in。BushiDAO。"
     />
-    <meta property="og:url" content="https://gpro8.github.io/sukedachi-site/" />
     <meta
       property="og:image"
       content="https://gpro8.github.io/sukedachi-site/og-share.jpg"
     />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC" />
+    <meta
+      property="og:image:alt"
+      content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"
+    />
 
     <!-- X / Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -38,6 +45,10 @@
     <meta
       name="twitter:image"
       content="https://gpro8.github.io/sukedachi-site/og-share.jpg"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"
     />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
