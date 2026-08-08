@@ -62,6 +62,16 @@ import {
 } from "./faq";
 import { showToast } from "./Toast";
 import { ContributorsBlock } from "./ContributorsBlock";
+import {
+  IconBook,
+  IconContract,
+  IconList,
+  IconNobori,
+  IconRaise,
+  IconScroll,
+  IconUser,
+  IconWallet,
+} from "./Icons";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -711,7 +721,7 @@ function DetailPanel({
           </dd>
         </div>
         <div>
-          <dt>契約</dt>
+          <dt>賢契約</dt>
           <dd>
             <a href={`${EXPLORER}/address/${address}`} target="_blank" rel="noreferrer">
               {shortAddr(address)}
@@ -2060,41 +2070,72 @@ export default function App() {
     <div className="page">
       <header className="top">
         <div className="brand">
-          <span className="logo">助</span>
-          <div>
+          <span className="logo" aria-hidden>
+            <IconNobori className="logo-icon" />
+          </span>
+          <div className="brand-text">
             <div className="brand-name">助太刀 Sukedachi</div>
             <div className="brand-sub">
               {CHAIN.name} · {TOKEN_SYMBOL} · BushiDAO
             </div>
           </div>
         </div>
-        <nav className="nav">
-          <a href="./allowlist.html">AL申請</a>
+        <nav className="nav" aria-label="サイト">
+          <a
+            href="./allowlist.html"
+            className="nav-ico"
+            aria-label="AL申請"
+            title="AL申請"
+          >
+            <IconScroll />
+            <span className="nav-label">AL申請</span>
+          </a>
           <a
             href={`${EXPLORER}/address/${FACTORY_ADDRESS}`}
             target="_blank"
             rel="noreferrer"
+            className="nav-ico"
+            aria-label="賢契約"
+            title="賢契約"
           >
-            賢契約
+            <IconContract />
+            <span className="nav-label">賢契約</span>
           </a>
           {!isConnected ? (
             <button
-              className="btn primary"
+              type="button"
+              className="btn primary nav-ico nav-connect"
               disabled={connecting}
               onClick={() => connect({ connector: connectors[0] })}
+              aria-label="ウォレット接続"
+              title="ウォレット接続"
             >
-              ウォレット接続
+              <IconWallet />
+              <span className="nav-label">接続</span>
             </button>
           ) : (
             <button
-              className="btn ghost header-user"
+              type="button"
+              className="btn ghost header-user nav-ico"
               onClick={() => {
                 setTab("me");
                 setSelected(null);
               }}
+              aria-label="マイページ"
               title="マイページ"
             >
-              <CreatorChip address={address} profile={myProfile} compact />
+              <span className="header-user-av" aria-hidden>
+                <img
+                  src={avatarSrc(myProfile, address)}
+                  alt=""
+                  className="header-av-img"
+                />
+              </span>
+              <span className="nav-label header-user-label">
+                {hasDisplayProfile(myProfile)
+                  ? profileDisplayName(myProfile, address!)
+                  : shortAddr(address)}
+              </span>
             </button>
           )}
         </nav>
@@ -2109,44 +2150,64 @@ export default function App() {
         </button>
       )}
 
-      <div className="tabs">
+      <div className="tabs" role="tablist" aria-label="メインメニュー">
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "list"}
           className={tab === "list" ? "on" : ""}
           onClick={() => {
             setTab("list");
             setSelected(null);
             setJustCreated(null);
           }}
+          aria-label="旗揚げ一覧"
+          title="旗揚げ一覧"
         >
-          旗揚げ一覧
+          <IconList className="tab-ico" />
+          <span className="tab-label">旗揚げ一覧</span>
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "create"}
           className={tab === "create" ? "on" : ""}
           onClick={() => setTab("create")}
+          aria-label="旗を揚げる"
+          title="旗を揚げる"
         >
-          旗を揚げる
+          <IconRaise className="tab-ico" />
+          <span className="tab-label">旗を揚げる</span>
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "me"}
           className={tab === "me" ? "on" : ""}
           onClick={() => {
             setTab("me");
             setSelected(null);
           }}
+          aria-label="マイページ"
+          title="マイページ"
         >
-          マイページ
+          <IconUser className="tab-ico" />
+          <span className="tab-label">マイページ</span>
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={tab === "faq"}
           className={tab === "faq" ? "on" : ""}
           onClick={() => {
             setTab("faq");
             setSelected(null);
           }}
+          aria-label="心得（FAQ）"
+          title="心得（FAQ）"
         >
-          心得（FAQ）
+          <IconBook className="tab-ico" />
+          <span className="tab-label">心得</span>
         </button>
       </div>
 
