@@ -76,6 +76,8 @@ export function ContributorsBlock({
   const shown =
     rows && (expanded ? rows : rows.slice(0, PREVIEW));
   const more = rows && rows.length > PREVIEW ? rows.length - PREVIEW : 0;
+  const expandedAll =
+    opened && !loading && !!rows && rows.length > PREVIEW && expanded;
 
   return (
     <div className="contributors">
@@ -164,24 +166,47 @@ export function ContributorsBlock({
         </ul>
       )}
 
-      {opened && !loading && more > 0 && (
+      {/* Expand / collapse — only when there is more to show */}
+      {opened && !loading && more > 0 && !expanded && (
+        <button
+          type="button"
+          className="contributors-more primary-more"
+          onClick={() => setExpanded(true)}
+        >
+          さらに表示（残り {more} 人）
+        </button>
+      )}
+      {opened && !loading && expandedAll && (
         <button
           type="button"
           className="contributors-more"
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => setExpanded(false)}
         >
-          {expanded ? "折りたたむ" : `すべて表示（+${more}）`}
+          折りたたむ
         </button>
       )}
 
-      {opened && !loading && rows && rows.length > 0 && (
+      {/* End state: no more rows to reveal in the list UI */}
+      {opened &&
+        !loading &&
+        rows &&
+        rows.length > 0 &&
+        (more === 0 || expanded) && (
+          <p className="contributors-end">
+            すべての履歴を表示しています（{rows.length}人）
+          </p>
+        )}
+
+      {/* Explicit refresh — secondary, not confused with "more" */}
+      {opened && !loading && rows && rows.length > 0 && !err && (
         <button
           type="button"
-          className="contributors-more"
+          className="contributors-refresh"
           disabled={loading}
           onClick={() => void load(true)}
+          title="チェーンから最新の加勢を再取得"
         >
-          更新
+          最新に更新
         </button>
       )}
     </div>
