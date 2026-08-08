@@ -56,9 +56,11 @@ import {
   formatXHandleDisplay,
   normalizeXHandle,
   parseCampaignParam,
+  siteBaseUrl,
   xIntentUrl,
   xProfileUrl,
 } from "./faq";
+import { showToast } from "./Toast";
 import { ContributorsBlock } from "./ContributorsBlock";
 
 type Kind = "crowdfund" | "charity" | "unknown";
@@ -625,9 +627,11 @@ function DetailPanel({
               });
               try {
                 await navigator.clipboard.writeText(text);
-                setStatus("共有文をコピーしました（Discord / X に貼れます）");
+                showToast("コピーしました — Discord / X に貼れます", "ok");
+                setStatus(null);
               } catch {
-                setStatus(url);
+                showToast("コピーに失敗 — 下の文を長押しで選択", "err");
+                setStatus(text);
               }
             }}
           >
@@ -1367,8 +1371,10 @@ function JustCreatedSharePanel({
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(shareText);
-              setStatus("共有文をコピーしました（Discord に貼れます）");
+              showToast("コピーしました — Discord / X に貼れます", "ok");
+              setStatus(null);
             } catch {
+              showToast("コピーに失敗 — 文を長押しで選択", "err");
               setStatus(url || shareText);
             }
           }}
