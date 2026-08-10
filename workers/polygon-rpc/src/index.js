@@ -363,7 +363,9 @@ async function readCampaign(alchemy, address) {
     try {
       const b64 = metaUri.split("base64,")[1] || "";
       const pad = "=".repeat((4 - (b64.length % 4)) % 4);
-      const raw = atob(b64 + pad);
+      const binary = atob(b64 + pad);
+      const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+      const raw = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
       const m = JSON.parse(raw);
       title = m.name || m.title || "";
       description = m.description || "";
