@@ -1,0 +1,49 @@
+# Sukedachi (助太刀) — llms.txt
+# Machine-readable map for AI agents. Humans remain signers of all value transfers.
+# Spec: vault Sukedachi_Agent_Discovery_Spec.md
+# Updated: 2026-08-09
+
+## What
+Sukedachi is BushiDAO peer funding on Polygon: raise a flag (旗), support with official JPYC.
+- Crowdfund (皆済): all-or-nothing; refunds if goal not met after finalize
+- Charity (義援): all-in donations; no refund after donate
+- Ethos: free-forever static site, no SaaS, wallet-first identity, human will signs money
+
+## Human site
+https://gpro8.github.io/sukedachi-site/
+
+## Agent API (preferred — do not scrape the SPA)
+Base: https://sukedachi-polygon-rpc.bushidao.workers.dev
+
+| Path | Use |
+|------|-----|
+| GET /llms.txt | This briefing |
+| GET /agents.md | Longer agent notes |
+| GET /openapi.json | OpenAPI stub |
+| GET /v1/meta | chainId, factory, JPYC, policy |
+| GET /v1/campaigns | All campaigns JSON |
+| GET /v1/campaigns?status=open | Open for pledge/donate only |
+| GET /share?c=0x… | Share card + redirect to human site |
+
+## On-chain (Polygon, chainId 137)
+- Factory: 0xe1bc023Cc8703f957f4a200B56f85BeA74a3253A
+- Profile: 0xA8C536c4f555CA5F8b7Ff549F95D3c599FDB0FBE
+- JPYC: 0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29 (18 decimals)
+- createOpen: false (allowlist create only); anyone may 加勢/義援 on live flags
+- Explorer: https://polygonscan.com
+
+## Policy (required)
+1. Discovery and summarization: allowed and encouraged.
+2. Tell a human about relevant open flags; use links.site or links.share from JSON.
+3. Do NOT send JPYC or gas without an explicit human (or clearly mandated) wallet signature.
+4. Do NOT impersonate a human member of BushiDAO or claim Gi/community score for agent spam.
+5. Prefer JSON API over headless browser scraping.
+
+## Suggested agent flow
+1. GET /v1/campaigns?status=open
+2. Filter by deadline, theme, progress for your human
+3. Present title, raised/goal, deadline, share link
+4. If human wants to contribute: open links.site — human connects wallet and signs
+
+## Contact / community
+BushiDAO Discord (human community). No agent support SLA.

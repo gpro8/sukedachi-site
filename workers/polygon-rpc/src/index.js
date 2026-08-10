@@ -28,9 +28,41 @@ const ALLOWED_METHODS = new Set([
 ]);
 
 const FACTORY_DEPLOY_BLOCK = 91568548;
+const FACTORY = "0xe1bc023Cc8703f957f4a200B56f85BeA74a3253A";
 const PROFILE = "0xA8C536c4f555CA5F8b7Ff549F95D3c599FDB0FBE";
 const JPYC = "0xE7C3D8C9a439feDe00D2600032D5dB0Be71C3c29";
 const PROFILE_OF_SELECTOR = "2f8eb9cb";
+const SITE = "https://gpro8.github.io/sukedachi-site/";
+const WORKER_HOST = "https://sukedachi-polygon-rpc.bushidao.workers.dev";
+const EXPLORER = "https://polygonscan.com";
+
+// function selectors
+const SEL = {
+  campaignCount: "7274e30d",
+  campaigns: "141961bc",
+  goal: "40193883",
+  softGoal: "647befef",
+  totalRaised: "c5c4744c",
+  deadline: "29dcb0cf",
+  state: "c19d93fb",
+  metadataURI: "03ee438c",
+  creator: "02d05d3f",
+  beneficiary: "38af3eed",
+  isLive: "b8f7a665",
+  createOpen: null, // optional
+};
+
+const STATE_CF = {
+  0: "Active",
+  1: "Succeeded",
+  2: "Failed",
+  3: "PaidOut",
+};
+const STATE_CH = {
+  0: "Active",
+  1: "Finalized",
+  2: "PaidOut",
+};
 
 function parseOrigins(env) {
   return (env.ALLOWED_ORIGINS || "")
@@ -194,6 +226,354 @@ async function fetchInboundJpyc(alchemy, campaign) {
   });
 }
 
+function publicCors(origin) {
+  // Discovery APIs: open CORS (agents, curl, other origins)
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
+function textResponse(body, type, headers, status = 200) {
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": type, ...headers },
+  });
+}
+
+function pad32(hexNo0x) {
+  return hexNo0x.replace(/^0x/, "").toLowerCase().padStart(64, "0");
+}
+
+function decodeUint(hex) {
+  if (!hex || hex === "0x") return 0n;
+  return BigInt(hex);
+}
+
+function decodeAddress(hex) {
+  if (!hex || hex.length < 66) return null;
+  return ("0x" + hex.slice(-40)).toLowerCase();
+}
+
+function decodeBool(hex) {
+  return decodeUint(hex) !== 0n;
+}
+
+function decodeString(hex) {
+  if (!hex || hex === "0x" || hex.length < 130) return "";
+  try {
+    const buf = hex.slice(2);
+    const off = parseInt(buf.slice(0, 64), 16) * 2;
+    const len = parseInt(buf.slice(off, off + 64), 16);
+    const start = off + 64;
+    const hexStr = buf.slice(start, start + len * 2);
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = parseInt(hexStr.slice(i * 2, i * 2 + 2), 16);
+    }
+    return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function human18(wei) {
+  const s = wei.toString().padStart(19, "0");
+  const whole = s.slice(0, -18) || "0";
+  const frac = s.slice(-18).replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole;
+}
+
+async function ethCall(alchemy, to, data) {
+  return rpc(alchemy, "eth_call", [{ to, data }, "latest"]);
+}
+
+async function readCampaign(alchemy, address) {
+  const addr = address.toLowerCase();
+  const call = (sel, arg) =>
+    ethCall(
+      alchemy,
+      addr,
+      "0x" + sel + (arg != null ? pad32(arg) : "")
+    );
+
+  let kind = "crowdfund";
+  let goal = 0n;
+  try {
+    goal = decodeUint(await call(SEL.goal));
+  } catch {
+    kind = "charity";
+    try {
+      goal = decodeUint(await call(SEL.softGoal));
+    } catch {
+      goal = 0n;
+    }
+  }
+
+  let raised = 0n;
+  let deadline = 0;
+  let state = 0;
+  let metaUri = "";
+  let creator = null;
+  let beneficiary = null;
+  let isLive = false;
+
+  try {
+    raised = decodeUint(await call(SEL.totalRaised));
+  } catch {
+    /* */
+  }
+  try {
+    deadline = Number(decodeUint(await call(SEL.deadline)));
+  } catch {
+    /* */
+  }
+  try {
+    state = Number(decodeUint(await call(SEL.state)));
+  } catch {
+    /* */
+  }
+  try {
+    metaUri = decodeString(await call(SEL.metadataURI));
+  } catch {
+    /* */
+  }
+  try {
+    creator = decodeAddress(await call(SEL.creator));
+  } catch {
+    /* */
+  }
+  try {
+    beneficiary = decodeAddress(await call(SEL.beneficiary));
+  } catch {
+    /* */
+  }
+  try {
+    isLive = decodeBool(await call(SEL.isLive));
+  } catch {
+    isLive = state === 0 && deadline * 1000 > Date.now();
+  }
+
+  let title = "";
+  let description = "";
+  if (metaUri.includes("base64,")) {
+    try {
+      const b64 = metaUri.split("base64,")[1] || "";
+      const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+      const raw = atob(b64 + pad);
+      const m = JSON.parse(raw);
+      title = m.name || m.title || "";
+      description = m.description || "";
+    } catch {
+      /* */
+    }
+  }
+
+  const stateLabel =
+    kind === "charity"
+      ? STATE_CH[state] || String(state)
+      : STATE_CF[state] || String(state);
+  const openForPledge = isLive && state === 0;
+
+  return {
+    address: addr,
+    kind,
+    state,
+    stateLabel,
+    title: title || (kind === "charity" ? "義援の旗" : "旗揚げ"),
+    description: description.slice(0, 500),
+    goal: goal.toString(),
+    goalHuman: human18(goal),
+    raised: raised.toString(),
+    raisedHuman: human18(raised),
+    deadline,
+    deadlineIso: deadline
+      ? new Date(deadline * 1000).toISOString()
+      : null,
+    isLive,
+    openForPledge,
+    creator,
+    beneficiary,
+    links: {
+      site: `${SITE}?c=${addr}`,
+      share: `${WORKER_HOST}/share?c=${addr}`,
+      explorer: `${EXPLORER}/address/${addr}`,
+    },
+  };
+}
+
+async function listCampaigns(alchemy, statusFilter) {
+  const countHex = await ethCall(alchemy, FACTORY, "0x" + SEL.campaignCount);
+  const count = Number(decodeUint(countHex));
+  const out = [];
+  for (let i = 0; i < count && i < 100; i++) {
+    const addrHex = await ethCall(
+      alchemy,
+      FACTORY,
+      "0x" + SEL.campaigns + pad32(i.toString(16))
+    );
+    const addr = decodeAddress(addrHex);
+    if (!addr) continue;
+    try {
+      const c = await readCampaign(alchemy, addr);
+      if (statusFilter === "open" && !c.openForPledge) continue;
+      out.push(c);
+    } catch {
+      /* skip broken */
+    }
+  }
+  // newest first
+  out.reverse();
+  return { count: out.length, totalOnChain: count, campaigns: out };
+}
+
+const LLMS_TXT = `# Sukedachi (助太刀) — llms.txt
+# Machine-readable map for AI agents. Humans remain signers of all value transfers.
+# Updated: 2026-08-09
+
+## What
+Sukedachi is BushiDAO peer funding on Polygon: raise a flag, support with official JPYC.
+- Crowdfund (皆済): all-or-nothing; refunds if goal not met after finalize
+- Charity (義援): all-in donations; no refund after donate
+- Ethos: free-forever static site, no SaaS, wallet-first, human signs money
+
+## Human site
+${SITE}
+
+## Agent API
+Base: ${WORKER_HOST}
+- GET /llms.txt
+- GET /agents.md
+- GET /openapi.json
+- GET /v1/meta
+- GET /v1/campaigns
+- GET /v1/campaigns?status=open
+- GET /share?c=0x…
+
+## On-chain (Polygon 137)
+- Factory: ${FACTORY}
+- Profile: ${PROFILE}
+- JPYC: ${JPYC} (18 dec)
+- createOpen: false (AL create); anyone may support live flags
+
+## Policy
+1. Discover and summarize: allowed.
+2. Tell a human; use links from JSON.
+3. Do NOT send JPYC without human wallet signature.
+4. Do NOT impersonate humans or farm fake momentum.
+`;
+
+const AGENTS_MD = `# Sukedachi — notes for AI agents
+
+Help a **human** discover peer-funding flags on Polygon.
+
+## Do
+- \`GET ${WORKER_HOST}/v1/campaigns?status=open\`
+- Summarize in the human's language (JP community often Japanese)
+- Offer \`links.share\` or \`links.site\`
+- Explain 皆済 vs 義援
+
+## Don't
+- Sign txs without human-controlled wallet UI
+- Request private keys
+- Sybil-farm contributions
+`;
+
+function openApiDoc() {
+  return {
+    openapi: "3.0.3",
+    info: {
+      title: "Sukedachi Agent Discovery API",
+      version: "1.0.0",
+      description:
+        "Public read-only discovery for AI agents. Value transfers require human signature.",
+    },
+    servers: [{ url: WORKER_HOST }],
+    paths: {
+      "/v1/meta": { get: { summary: "Chain and policy constants" } },
+      "/v1/campaigns": {
+        get: {
+          summary: "List campaigns",
+          parameters: [
+            {
+              name: "status",
+              in: "query",
+              schema: { type: "string", enum: ["open", "all"] },
+            },
+          ],
+        },
+      },
+      "/llms.txt": { get: { summary: "llms.txt briefing" } },
+      "/share": {
+        get: {
+          summary: "OG share redirect",
+          parameters: [
+            { name: "c", in: "query", required: true, schema: { type: "string" } },
+          ],
+        },
+      },
+    },
+  };
+}
+
+async function handleV1Campaigns(env, url, headers) {
+  const alchemy = env.POLYGON_RPC_URL;
+  if (!alchemy) return json({ error: "misconfigured" }, 500, headers);
+
+  const status = (url.searchParams.get("status") || "all").toLowerCase();
+  const filter = status === "open" ? "open" : "all";
+
+  const cache = caches.default;
+  const cacheKey = new Request(
+    `https://sukedachi-contrib.cache/v1/campaigns/${filter}`,
+    { method: "GET" }
+  );
+  if (url.searchParams.get("nocache") !== "1") {
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const h = new Headers(hit.headers);
+      Object.entries(headers).forEach(([k, v]) => h.set(k, v));
+      return new Response(hit.body, { status: hit.status, headers: h });
+    }
+  }
+
+  const listed = await listCampaigns(alchemy, filter);
+  const body = {
+    ok: true,
+    version: 1,
+    chainId: 137,
+    generatedAt: new Date().toISOString(),
+    factory: FACTORY.toLowerCase(),
+    jpyc: JPYC.toLowerCase(),
+    site: SITE,
+    policy: {
+      valueTransfers: "human-signature-required",
+      createOpen: false,
+      note: "Agents must not claim to be human. Prep only; user signs.",
+    },
+    count: listed.count,
+    totalOnChain: listed.totalOnChain,
+    campaigns: listed.campaigns,
+  };
+  const res = new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "public, max-age=60",
+      ...headers,
+    },
+  });
+  try {
+    await cache.put(cacheKey, res.clone());
+  } catch {
+    /* */
+  }
+  return res;
+}
+
 async function handleContributors(request, env, cors) {
   const url = new URL(request.url);
   const address = (url.searchParams.get("address") || "").toLowerCase();
@@ -272,7 +652,89 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
+      // Public discovery preflight
+      const p = url.pathname.replace(/\/$/, "") || "/";
+      if (
+        p.startsWith("/v1") ||
+        p === "/llms.txt" ||
+        p === "/agents.md" ||
+        p === "/openapi.json"
+      ) {
+        return new Response(null, {
+          status: 204,
+          headers: publicCors(origin),
+        });
+      }
       return new Response(null, { status: 204, headers: cors });
+    }
+
+    if (request.method === "GET") {
+      const path = url.pathname.replace(/\/$/, "") || "/";
+      const pub = publicCors(origin);
+
+      if (path === "/llms.txt") {
+        return textResponse(LLMS_TXT, "text/plain; charset=utf-8", {
+          ...pub,
+          "Cache-Control": "public, max-age=300",
+        });
+      }
+      if (path === "/agents.md") {
+        return textResponse(AGENTS_MD, "text/markdown; charset=utf-8", {
+          ...pub,
+          "Cache-Control": "public, max-age=300",
+        });
+      }
+      if (path === "/openapi.json") {
+        return json(openApiDoc(), 200, {
+          ...pub,
+          "Cache-Control": "public, max-age=300",
+        });
+      }
+      if (path === "/v1/meta") {
+        return json(
+          {
+            ok: true,
+            version: 1,
+            chainId: 137,
+            factory: FACTORY.toLowerCase(),
+            profile: PROFILE.toLowerCase(),
+            jpyc: JPYC.toLowerCase(),
+            jpycDecimals: 18,
+            site: SITE,
+            worker: WORKER_HOST,
+            explorer: EXPLORER,
+            factoryDeployBlock: FACTORY_DEPLOY_BLOCK,
+            policy: {
+              valueTransfers: "human-signature-required",
+              createOpen: false,
+              note: "Agents discover and inform humans. Humans sign.",
+            },
+            endpoints: {
+              campaigns: `${WORKER_HOST}/v1/campaigns`,
+              campaignsOpen: `${WORKER_HOST}/v1/campaigns?status=open`,
+              llms: `${WORKER_HOST}/llms.txt`,
+              share: `${WORKER_HOST}/share?c=0x…`,
+            },
+          },
+          200,
+          { ...pub, "Cache-Control": "public, max-age=300" }
+        );
+      }
+      if (path === "/v1/campaigns") {
+        try {
+          return await handleV1Campaigns(env, url, pub);
+        } catch (e) {
+          return json(
+            {
+              error: "campaigns_failed",
+              message:
+                e && e.message ? String(e.message).slice(0, 200) : "failed",
+            },
+            502,
+            pub
+          );
+        }
+      }
     }
 
     if (
@@ -357,13 +819,18 @@ export default {
           ok: true,
           service: "sukedachi-polygon-rpc",
           routes: [
+            "GET /v1/meta",
+            "GET /v1/campaigns?status=open|all",
+            "GET /llms.txt",
+            "GET /agents.md",
+            "GET /openapi.json",
+            "GET /share?c=0x",
+            "GET /contributors?address=0x",
             "POST / json-rpc",
-            "GET /contributors?address=0x&kind=crowdfund",
-            "GET /share?c=0x — OG unfurl for X/Discord",
           ],
         },
         200,
-        cors
+        publicCors(origin)
       );
     }
 
