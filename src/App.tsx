@@ -66,12 +66,15 @@ import {
   IconBook,
   IconContract,
   IconList,
+  IconMoon,
   IconNobori,
   IconRaise,
   IconScroll,
+  IconSun,
   IconUser,
   IconWallet,
 } from "./Icons";
+import { initTheme, toggleTheme, type ThemeMode } from "./theme";
 
 type Kind = "crowdfund" | "charity" | "unknown";
 
@@ -1950,6 +1953,7 @@ export default function App() {
   const { connect, connectors, isPending: connecting } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
+  const [theme, setTheme] = useState<ThemeMode>(() => initTheme("light"));
 
   const { data: count, refetch: refetchCount } = useReadContract({
     address: FACTORY_ADDRESS,
@@ -2081,6 +2085,18 @@ export default function App() {
           </div>
         </div>
         <nav className="nav" aria-label="サイト">
+          <button
+            type="button"
+            className="nav-ico theme-toggle"
+            onClick={() => setTheme((t) => toggleTheme(t))}
+            aria-label={theme === "dark" ? "ライトモード" : "ダークモード"}
+            title={theme === "dark" ? "ライトモード" : "ダークモード"}
+          >
+            {theme === "dark" ? <IconSun /> : <IconMoon />}
+            <span className="nav-label">
+              {theme === "dark" ? "ライト" : "ダーク"}
+            </span>
+          </button>
           <a
             href="./allowlist.html"
             className="nav-ico"

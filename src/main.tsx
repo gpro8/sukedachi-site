@@ -5,7 +5,11 @@ import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "./wagmi";
 import App from "./App";
 import { ToastHost } from "./Toast";
+import { initTheme } from "./theme";
 import "./styles.css";
+
+/** Apply theme before paint to avoid flash */
+initTheme("light");
 
 /**
  * 七宝 pattern URL must be absolute.
@@ -14,7 +18,6 @@ import "./styles.css";
  */
 function shippoBackgroundUrl(): string {
   try {
-    // From bundled JS at …/assets/index-*.js → …/patterns/shippo.svg
     return new URL("../patterns/shippo.svg", import.meta.url).href;
   } catch {
     const base = window.location.href.replace(/\/?([^/]*\.[^/]*)?$/, "/");

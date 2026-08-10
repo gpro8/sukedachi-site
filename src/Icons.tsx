@@ -114,3 +114,22 @@ export function IconBook({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Sun — switch to light */
+export function IconSun({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="3.6" />
+      <path d="M12 3.5v1.8M12 18.7v1.8M3.5 12h1.8M18.7 12h1.8M6.1 6.1l1.3 1.3M16.6 16.6l1.3 1.3M6.1 17.9l1.3-1.3M16.6 7.4l1.3-1.3" />
+    </svg>
+  );
+}
+
+/** Moon — switch to dark */
+export function IconMoon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M18.5 14.2A7.2 7.2 0 0 1 9.8 5.5 6.6 6.6 0 1 0 18.5 14.2Z" />
+    </svg>
+  );
+}

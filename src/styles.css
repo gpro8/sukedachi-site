@@ -1,8 +1,9 @@
 /* Sukedachi — bright 和色 (wairo) + 七宝つなぎ background
-   Pattern: shippō (seven treasures) · color 朽葉 #917347 on 白橡 ground
-   Differs from dark Collection auction site */
+   Light default · elegant dark gray wairo via data-theme="dark"
+   Pattern: shippō · not pure blackout */
 
-:root {
+:root,
+html[data-theme="light"] {
   color-scheme: light;
   /* 白橡 / 生成り — pattern ground */
   --bg: #f4f1ea;
@@ -26,10 +27,34 @@
   --danger: #c53d43;
   --radius: 16px;
   --shadow: 0 8px 28px rgba(31, 49, 52, 0.08);
+  --toast-bg: #1f3134;
+  --toast-fg: #f7f1e6;
   font-family: "Noto Sans JP", "DM Sans", system-ui, sans-serif;
   color: var(--text);
   background-color: var(--bg);
   line-height: 1.5;
+}
+
+/* 漆黒 /  gener  — gentle dark, not #000 void · 金 accent */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1b1916;
+  --bg-deep: #141210;
+  --shippo: #6e624c;
+  --panel: #252320;
+  --border: #3d3830;
+  --border-strong: #5c5346;
+  --text: #ede8da;
+  --muted: #a3998c;
+  --accent: #d4785a;
+  --accent-hover: #e08a6c;
+  --earth: #c6a24f;
+  --ok: #8fa083;
+  --blue: #8a9cb0;
+  --danger: #e07878;
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+  --toast-bg: #2a2622;
+  --toast-fg: #ede8da;
 }
 
 * {
@@ -39,12 +64,17 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* 七宝柄 — URL set at runtime via import.meta.env.BASE_URL (GH Pages safe) */
   background-color: var(--bg);
   background-image: var(--shippo-bg, none);
   background-size: 80px 80px;
   background-repeat: repeat;
   background-attachment: fixed;
+}
+
+html[data-theme="dark"] body {
+  /* slightly dimmer pattern on dark paper */
+  background-image: var(--shippo-bg, none);
+  opacity: 1;
 }
 
 a {
@@ -55,6 +85,14 @@ a {
   max-width: 1040px;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 3rem;
+}
+
+.theme-toggle {
+  /* same as nav-ico base */
+}
+.theme-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 /* Opaque paper chips — keep chrome readable over 七宝 */
@@ -332,7 +370,6 @@ a {
     border-radius: 12px;
   }
   .nav-ico .nav-label {
-    /* floating tip under icon */
     position: absolute;
     top: calc(100% + 6px);
     left: 50%;
@@ -340,8 +377,8 @@ a {
     z-index: 40;
     padding: 0.28rem 0.5rem;
     border-radius: 8px;
-    background: #1f3134;
-    color: #f7f1e6;
+    background: var(--toast-bg, #1f3134);
+    color: var(--toast-fg, #f7f1e6);
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.01em;
@@ -1313,8 +1350,8 @@ a.disabled-link {
   width: 100%;
   padding: 0.75rem 0.9rem;
   border-radius: 12px;
-  background: #1f3134;
-  color: #f7f1e6;
+  background: var(--toast-bg, #1f3134);
+  color: var(--toast-fg, #f7f1e6);
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1.35;
