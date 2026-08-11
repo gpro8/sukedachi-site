@@ -2089,13 +2089,11 @@ export default function App() {
             type="button"
             className="nav-ico theme-toggle"
             onClick={() => setTheme((t) => toggleTheme(t))}
-            aria-label={theme === "dark" ? "ライトモード" : "ダークモード"}
-            title={theme === "dark" ? "ライトモード" : "ダークモード"}
+            aria-label={theme === "dark" ? "陽モード" : "陰モード"}
+            title={theme === "dark" ? "陽" : "陰"}
           >
             {theme === "dark" ? <IconSun /> : <IconMoon />}
-            <span className="nav-label">
-              {theme === "dark" ? "ライト" : "ダーク"}
-            </span>
+            <span className="nav-label">{theme === "dark" ? "陽" : "陰"}</span>
           </button>
           <a
             href="./allowlist.html"

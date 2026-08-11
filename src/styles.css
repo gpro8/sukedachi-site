@@ -28,6 +28,24 @@ html[data-theme="light"] {
   --radius: 16px;
   --shadow: 0 8px 28px rgba(31, 49, 52, 0.08);
   --toast-bg: #1f3134;
+  --chrome: rgba(255, 252, 247, 0.96);
+  --chrome-soft: rgba(255, 252, 247, 0.92);
+  --btn-face: #ffffff;
+  --btn-face-soft: #eef1ee;
+  --logo-from: #fff8f0;
+  --logo-to: #f0e6d6;
+  --av-bg: #f0e8dc;
+  --tab-hover: rgba(255, 255, 255, 0.7);
+  --warn-btn-bg: #fff4e8;
+  --warn-btn-border: #e0c49a;
+  --warn-btn-text: #8a5a20;
+  --input-bg: #ffffff;
+  --cover-ph: #fff8f0;
+  --chip-bg: #ffffff;
+  --on-accent: #ffffff;
+  --footer-chip: rgba(255, 252, 247, 0.94);
+  --progress-track: rgba(255, 255, 255, 0.55);
+  --meta-row: rgba(255, 252, 247, 0.85);
   --toast-fg: #f7f1e6;
   font-family: "Noto Sans JP", "DM Sans", system-ui, sans-serif;
   color: var(--text);
@@ -54,7 +72,27 @@ html[data-theme="dark"] {
   --danger: #e07878;
   --shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
   --toast-bg: #2a2622;
+  --chrome: rgba(37, 35, 32, 0.96);
+  --chrome-soft: rgba(37, 35, 32, 0.92);
+  --btn-face: #2f2c28;
+  --btn-face-soft: #2a322c;
+  --logo-from: #3a342c;
+  --logo-to: #252320;
+  --av-bg: #3a342c;
+  --tab-hover: rgba(255, 255, 255, 0.06);
+  --warn-btn-bg: #3a3020;
+  --warn-btn-border: #6a5220;
+  --warn-btn-text: #e0b060;
+  --input-bg: #2a2622;
+  --cover-ph: #2a2622;
+  --chip-bg: #2f2c28;
+  --on-accent: #ffffff;
+  --footer-chip: rgba(37, 35, 32, 0.94);
+  --progress-track: rgba(255, 255, 255, 0.08);
+  --meta-row: rgba(37, 35, 32, 0.85);
   --toast-fg: #ede8da;
+  color: var(--text);
+  background-color: var(--bg);
 }
 
 * {
@@ -110,7 +148,7 @@ a {
   gap: 0.65rem;
   margin-bottom: 1.15rem;
   padding: 0.65rem 0.85rem;
-  background: rgba(255, 252, 247, 0.96);
+  background: var(--chrome);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -130,7 +168,7 @@ a {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: linear-gradient(145deg, #fff8f0, #f0e6d6);
+  background: linear-gradient(145deg, var(--logo-from), var(--logo-to));
   border: 1px solid var(--border-strong);
   color: var(--accent);
   font-weight: 700;
@@ -177,7 +215,7 @@ a {
   font-weight: 600;
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
-  background: #fff;
+  background: var(--btn-face);
   border: 1px solid var(--border);
   text-decoration: none;
   cursor: pointer;
@@ -197,12 +235,12 @@ a {
   outline: none;
 }
 .nav-ico.btn.primary {
-  color: #fff;
+  color: var(--on-accent);
   border-color: #a8482e;
 }
 .nav-ico.btn.primary:hover:not(:disabled),
 .nav-ico.btn.primary:focus-visible:not(:disabled) {
-  color: #fff;
+  color: var(--on-accent);
 }
 .nav-label {
   white-space: nowrap;
@@ -223,7 +261,7 @@ a {
   overflow: hidden;
   flex: 0 0 auto;
   border: 1px solid var(--border);
-  background: #f0e8dc;
+  background: var(--av-bg);
 }
 .header-av-img {
   width: 100%;
@@ -239,7 +277,7 @@ a {
 
 .btn {
   border: 1px solid var(--border-strong);
-  background: #fff;
+  background: var(--btn-face);
   color: var(--text);
   border-radius: 999px;
   padding: 0.55rem 1.15rem;
@@ -254,7 +292,7 @@ a {
 }
 .btn.primary {
   background: linear-gradient(180deg, #d96a48, var(--accent));
-  color: #fff;
+  color: var(--on-accent);
   border-color: #a8482e;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
   box-shadow: 0 3px 12px rgba(205, 94, 60, 0.35);
@@ -263,20 +301,20 @@ a {
   background: var(--accent-hover);
 }
 .btn.accent {
-  background: #eef1ee;
+  background: var(--btn-face-soft);
   border-color: #c5cdc2;
   color: var(--ok);
 }
 .btn.ghost {
-  background: #fff;
+  background: var(--btn-face);
   border-color: var(--border);
   box-shadow: var(--shadow);
   color: var(--text);
 }
 .btn.warn {
-  background: #fff4e8;
-  border-color: #e0c49a;
-  color: #8a5a20;
+  background: var(--warn-btn-bg);
+  border-color: var(--warn-btn-border);
+  color: var(--warn-btn-text);
 }
 .btn.wide {
   width: 100%;
@@ -293,7 +331,7 @@ a {
   gap: 0.35rem;
   margin-bottom: 1.15rem;
   padding: 0.35rem;
-  background: rgba(255, 252, 247, 0.96);
+  background: var(--chrome);
   border: 1px solid var(--border);
   border-radius: 999px;
   box-shadow: var(--shadow);
@@ -327,11 +365,11 @@ a {
 }
 .tabs button:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--tab-hover);
 }
 .tabs button.on {
   background: linear-gradient(180deg, #d96a48, var(--accent));
-  color: #fff;
+  color: var(--on-accent);
   border-color: #a8482e;
   box-shadow: 0 2px 10px rgba(205, 94, 60, 0.3);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
@@ -456,7 +494,7 @@ a {
   margin: 0 0 1.25rem;
   max-width: none;
   padding: 0.85rem 1.05rem;
-  background: rgba(255, 252, 247, 0.96);
+  background: var(--chrome);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -473,7 +511,7 @@ a {
   color: var(--text);
   margin: 0.5rem 0 1rem;
   padding: 0.65rem 0.85rem;
-  background: rgba(255, 252, 247, 0.94);
+  background: var(--footer-chip);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
@@ -488,7 +526,7 @@ a {
 
 .linkish {
   border: 0;
-  background: rgba(255, 252, 247, 0.95);
+  background: var(--chrome);
   color: var(--accent);
   font: inherit;
   font-weight: 700;
@@ -508,7 +546,7 @@ a {
   font-weight: 600;
   color: var(--text);
   padding: 0.65rem 1rem;
-  background: rgba(255, 252, 247, 0.96);
+  background: var(--chrome);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -584,7 +622,7 @@ a {
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--btn-face);
   flex-shrink: 0;
 }
 .creator-chip.compact .creator-av {
@@ -702,7 +740,7 @@ a {
   }
 }
 .empty-col {
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--progress-track);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.75rem 0.85rem;
@@ -762,7 +800,7 @@ a.disabled-link {
 }
 .list-filter button {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--btn-face);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
   font-weight: 600;
@@ -772,7 +810,7 @@ a.disabled-link {
 .list-filter button.on {
   background: var(--accent, #c9a227);
   border-color: transparent;
-  color: #1a1a1a;
+  color: var(--on-accent);
 }
 .modal-backdrop {
   position: fixed;
@@ -822,7 +860,7 @@ a.disabled-link {
 .faq > .hint {
   margin: 0 0 1.15rem;
   padding: 0.75rem 0.9rem;
-  background: rgba(255, 255, 255, 0.65);
+  background: var(--progress-track);
   border: 1px solid var(--border);
   border-radius: 10px;
   line-height: 1.5;
@@ -831,7 +869,7 @@ a.disabled-link {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.85rem 1rem;
-  background: #fff;
+  background: var(--btn-face);
 }
 .faq-item[open] {
   box-shadow: 0 4px 14px rgba(31, 49, 52, 0.06);
@@ -876,7 +914,7 @@ a.disabled-link {
   gap: 0.75rem;
   align-items: center;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--btn-face);
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
   margin-bottom: 0.4rem;
@@ -962,7 +1000,7 @@ a.disabled-link {
   letter-spacing: 0.02em;
   padding: 0.22rem 0.55rem;
   border-radius: 999px;
-  background: rgba(255, 252, 247, 0.92);
+  background: var(--chrome-soft);
   border: 1px solid var(--border);
   color: var(--text);
   backdrop-filter: blur(4px);
@@ -980,9 +1018,9 @@ a.disabled-link {
   border-color: rgba(91, 99, 86, 0.4);
 }
 .pill.status-closed {
-  color: #8a5a20;
-  background: #fff6e8;
-  border-color: #e0c49a;
+  color: var(--warn-btn-text);
+  background: var(--warn-btn-bg);
+  border-color: var(--warn-btn-border);
 }
 .pill.status-done {
   color: var(--muted);
@@ -1023,8 +1061,8 @@ a.disabled-link {
   margin-top: 0.75rem;
   padding: 0.75rem 0.85rem;
   border-radius: 12px;
-  background: #fff8f0;
-  border: 1px solid #e8d5c0;
+  background: var(--cover-ph);
+  border: 1px solid var(--border-strong);
 }
 .return-label {
   font-size: 0.72rem;
@@ -1066,7 +1104,7 @@ a.disabled-link {
 .contributors {
   margin: 0.85rem 0 1rem;
   padding: 0.85rem 0.9rem 0.95rem;
-  background: rgba(255, 252, 247, 0.85);
+  background: var(--meta-row);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -1123,7 +1161,7 @@ a.disabled-link {
   gap: 0.55rem;
   padding: 0.4rem 0.35rem;
   border-radius: 10px;
-  background: #fff;
+  background: var(--btn-face);
   border: 1px solid var(--border);
 }
 .contributor-av {
@@ -1174,7 +1212,7 @@ a.disabled-link {
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--btn-face);
   box-shadow: 0 1px 4px rgba(31, 49, 52, 0.06);
 }
 .contributors-end {
@@ -1246,7 +1284,7 @@ a.disabled-link {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--btn-face);
   color: var(--text);
   font: inherit;
   padding: 0.65rem 0.75rem;
@@ -1306,7 +1344,7 @@ a.disabled-link {
 .mode-toggle button {
   flex: 1;
   border: 1px solid var(--border-strong);
-  background: #fff;
+  background: var(--btn-face);
   color: var(--text);
   border-radius: 10px;
   padding: 0.6rem;
@@ -1317,7 +1355,7 @@ a.disabled-link {
 }
 .mode-toggle button.on {
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   background: linear-gradient(180deg, #d96a48, var(--accent));
   box-shadow: 0 2px 10px rgba(205, 94, 60, 0.28);
 }
@@ -1410,4 +1448,41 @@ a.disabled-link {
   .toast-host {
     bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
+}
+
+
+/* 旗 cover dim in 陰 mode — ease bright art for dark lovers */
+.card-cover {
+  position: relative;
+  isolation: isolate;
+}
+.card-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: transparent;
+  transition: background 0.2s ease;
+  border-radius: inherit;
+}
+html[data-theme="dark"] .card-cover::after {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 16, 12, 0.38) 0%,
+    rgba(20, 16, 12, 0.58) 100%
+  );
+}
+.card-cover-badge {
+  position: relative;
+  z-index: 2;
+}
+/* detail-cover is the <img> itself — filter dim */
+html[data-theme="dark"] .detail-cover,
+html[data-theme="dark"] .card-cover img {
+  filter: brightness(0.72) contrast(1.04) saturate(0.96);
+}
+html[data-theme="dark"] .card-cover img {
+  /* overlay already dims; slightly less filter to avoid double crush */
+  filter: brightness(0.88) contrast(1.02);
 }
