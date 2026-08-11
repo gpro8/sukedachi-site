@@ -1451,38 +1451,19 @@ a.disabled-link {
 }
 
 
-/* 旗 cover dim in 陰 mode — ease bright art for dark lovers */
+/* 旗 cover dim in 陰 mode — gentle; list slightly darker than detail */
 .card-cover {
   position: relative;
   isolation: isolate;
-}
-.card-cover::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background: transparent;
-  transition: background 0.2s ease;
-  border-radius: inherit;
-}
-html[data-theme="dark"] .card-cover::after {
-  background: linear-gradient(
-    180deg,
-    rgba(20, 16, 12, 0.38) 0%,
-    rgba(20, 16, 12, 0.58) 100%
-  );
 }
 .card-cover-badge {
   position: relative;
   z-index: 2;
 }
-/* detail-cover is the <img> itself — filter dim */
-html[data-theme="dark"] .detail-cover,
+/* List + detail: brightness(0.69); detail a touch brighter for focus */
 html[data-theme="dark"] .card-cover img {
-  filter: brightness(0.72) contrast(1.04) saturate(0.96);
+  filter: brightness(0.69) contrast(1.03) saturate(0.98);
 }
-html[data-theme="dark"] .card-cover img {
-  /* overlay already dims; slightly less filter to avoid double crush */
-  filter: brightness(0.88) contrast(1.02);
+html[data-theme="dark"] .detail-cover {
+  filter: brightness(0.74) contrast(1.03) saturate(0.98);
 }
