@@ -2343,8 +2343,16 @@ export default function App() {
 
       <footer className="foot">
         <span>助太刀 · BushiDAO</span>
-        <span>
-          {CHAIN.name} · {TOKEN_SYMBOL}
+        <span className="foot-right">
+          <a href="./notes.html" className="foot-link">
+            利用上の注意
+          </a>
+          <span className="foot-sep" aria-hidden>
+            ·
+          </span>
+          <span>
+            {CHAIN.name} · {TOKEN_SYMBOL}
+          </span>
         </span>
       </footer>
     </div>

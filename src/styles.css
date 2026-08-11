@@ -541,7 +541,9 @@ a {
   margin-top: 2.25rem;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text);
@@ -550,6 +552,25 @@ a {
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
+}
+.foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.foot-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+.foot-link:hover {
+  text-decoration: underline;
+}
+.foot-sep {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 /* —— CAMPFIRE-style cards: image top, body below —— */
