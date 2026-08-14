@@ -37,6 +37,7 @@ import {
   type CampaignMeta,
 } from "./metadata";
 import { SafeImage } from "./SafeImage";
+import { CelebrateOverlay, HankoStamp, overGoalPct } from "./GoalCelebrate";
 import { buildCoverDataUri } from "./cover";
 import { prepareImageFile, friendlyTxError, MAX_PFP_CHARS, PFP_MAX_EDGE } from "./imagePrep";
 import {
@@ -332,11 +333,13 @@ function CampaignCard({
     (kind === "charity" ? "義援の旗" : "旗揚げ");
   const label = kindLabel(kind);
   const status = statusLabel(kind, state, deadline, now);
+  const rawPct = overGoalPct(raised, goalOrSoft);
+  const hit = goalOrSoft > 0n && raised >= goalOrSoft;
 
   return (
     <button
       type="button"
-      className={`card ${selected ? "selected" : ""}`}
+      className={`card ${selected ? "selected" : ""} ${hit ? "card-hit" : ""}`}
       onClick={onSelect}
     >
       <div className="card-cover">
@@ -346,9 +349,20 @@ function CampaignCard({
           kind={kind}
           className=""
         />
+        {hit && (
+          <div className="card-hanko" aria-hidden>
+            <HankoStamp />
+          </div>
+        )}
         <div className="card-cover-badge">
           <span className={`pill ${kind}`}>{label}</span>
           <span className={`pill status-${status.tone}`}>{status.text}</span>
+          {hit && (
+            <span className="pill pill-hit">
+              {rawPct >= 110 ? `${rawPct.toFixed(0)}%` : `${rawPct.toFixed(1)}%`}{" "}
+              達成
+            </span>
+          )}
         </div>
       </div>
       <div className="card-body">
@@ -392,10 +406,12 @@ function DetailPanel({
   address,
   kind,
   onBack,
+  onRaise,
 }: {
   address: Address;
   kind: Kind;
   onBack: () => void;
+  onRaise: () => void;
 }) {
   const { address: user, isConnected, chainId } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -594,28 +610,40 @@ function DetailPanel({
   const isBeneficiary =
     user && beneficiary && user.toLowerCase() === beneficiary.toLowerCase();
 
-  const pct =
-    goalOrSoft > 0n
-      ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
-      : 0;
+  const rawPct = overGoalPct(raised, goalOrSoft);
+  const pct = Math.min(100, rawPct);
+  const hit = goalOrSoft > 0n && raised >= goalOrSoft;
+  const pctLabel =
+    rawPct >= 110 ? `${rawPct.toFixed(0)}%` : `${rawPct.toFixed(1)}%`;
 
   const lotStatus = statusLabel(kind, state, deadline, now);
 
   return (
     <section className="detail">
+      {hit && (
+        <CelebrateOverlay id={address} play pctLabel={pctLabel} />
+      )}
       <button type="button" className="linkish" onClick={onBack}>
         ← 一覧
       </button>
       <div className="detail-head">
-        <SafeImage
-          src={meta.image}
-          title={title}
-          kind={kind}
-          className="detail-cover"
-        />
+        <div className="detail-cover-wrap">
+          <SafeImage
+            src={meta.image}
+            title={title}
+            kind={kind}
+            className="detail-cover"
+          />
+          {hit && (
+            <div className="detail-hanko" aria-hidden>
+              <HankoStamp className="hanko-lg" />
+            </div>
+          )}
+        </div>
         <div className="card-tags" style={{ marginBottom: "0.35rem" }}>
           <span className={`pill ${kind}`}>{kindLabel(kind)}</span>
           <span className={`pill status-${lotStatus.tone}`}>{lotStatus.text}</span>
+          {hit && <span className="pill pill-hit">{pctLabel} 達成</span>}
         </div>
         <h2>{title}</h2>
         {creator && (
@@ -692,10 +720,10 @@ function DetailPanel({
           <span>
             集まった義金 {formatUnits(raised, 18)} {TOKEN_SYMBOL}
             {kind === "crowdfund" && goalOrSoft > 0n && (
-              <> / 目標 {formatUnits(goalOrSoft, 18)}</>
+              <> / 目標 {formatUnits(goalOrSoft, 18)}{hit ? ` · ${pctLabel} 達成` : ""}</>
             )}
             {kind === "charity" && goalOrSoft > 0n && (
-              <> / 希望 {formatUnits(goalOrSoft, 18)}{pct >= 100 ? " · 到達" : ""}</>
+              <> / 希望 {formatUnits(goalOrSoft, 18)}{hit ? ` · ${pctLabel} 到達` : ""}</>
             )}
           </span>
           <span>
@@ -705,6 +733,33 @@ function DetailPanel({
           </span>
         </div>
       </div>
+
+      {hit && (
+        <div className="hit-banner">
+          <HankoStamp className="hanko-sm" />
+          <div>
+            <p className="hit-title">達成、おめでとうございます！</p>
+            <p className="hit-body">
+              目標は届きました。まだ受付中なら<strong>加勢は続きます</strong>
+              （旗手の背中をもう一押し）。
+              次はあなたの番でも。小さな旗からで大丈夫です。
+            </p>
+            <div className="hit-actions">
+              {live && (
+                <a className="btn primary" href="#sk-pledge">
+                  加勢する
+                </a>
+              )}
+              <button type="button" className="btn ghost" onClick={onRaise}>
+                旗を揚げる
+              </button>
+              <a className="btn ghost" href="./allowlist.html">
+                AL申請
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ContributorsBlock
         campaign={address}
@@ -753,7 +808,7 @@ function DetailPanel({
       )}
 
       {live && isConnected && (
-        <div className="action-box">
+        <div className="action-box" id="sk-pledge">
           <div className="bid-head">
             <span className="bid-label">
               {kind === "charity" ? `義援額 (${TOKEN_SYMBOL})` : `加勢額 (${TOKEN_SYMBOL})`}
@@ -2289,6 +2344,11 @@ export default function App() {
           onBack={() => {
             setSelected(null);
             setSelectedKindOverride(null);
+          }}
+          onRaise={() => {
+            setSelected(null);
+            setSelectedKindOverride(null);
+            setTab("create");
           }}
         />
       ) : (
