@@ -37,7 +37,12 @@ import {
   type CampaignMeta,
 } from "./metadata";
 import { SafeImage } from "./SafeImage";
-import { CelebrateOverlay, HankoStamp, overGoalPct } from "./GoalCelebrate";
+import {
+  CelebrateOverlay,
+  HankoStamp,
+  charityWarmthPct,
+  overGoalPct,
+} from "./GoalCelebrate";
 import { buildCoverDataUri } from "./cover";
 import { prepareImageFile, friendlyTxError, MAX_PFP_CHARS, PFP_MAX_EDGE } from "./imagePrep";
 import {
@@ -345,6 +350,12 @@ function CampaignCard({
   const status = statusLabel(kind, state, deadline, now);
   const rawPct = overGoalPct(raised, goalOrSoft);
   const hit = goalOrSoft > 0n && raised >= goalOrSoft;
+  const charityOpen = kind === "charity" && goalOrSoft === 0n;
+  const barPct = charityOpen
+    ? charityWarmthPct(raised)
+    : goalOrSoft > 0n
+      ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
+      : 0;
 
   return (
     <button
@@ -383,16 +394,14 @@ function CampaignCard({
           </div>
         )}
         <div className="card-bar-wrap" aria-hidden>
-          <div className="card-bar">
+          <div
+            className={`card-bar ${kind === "charity" ? "kind-charity" : "kind-crowdfund"}${
+              charityOpen ? " flow" : ""
+            }${raised > 0n && charityOpen ? " live" : ""}`}
+          >
             <div
-              className="card-bar-fill"
-              style={{
-                width: `${
-                  goalOrSoft > 0n
-                    ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
-                    : 0
-                }%`,
-              }}
+              className={`card-bar-fill ${kind === "charity" ? "kind-charity" : "kind-crowdfund"}`}
+              style={{ width: `${barPct}%` }}
             />
           </div>
         </div>
@@ -400,8 +409,18 @@ function CampaignCard({
           <span>
             {formatUnits(raised, 18)}
             <span className="muted">
-              {" "}
-              / {goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "—"} {TOKEN_SYMBOL}
+              {charityOpen ? (
+                <>
+                  {" "}
+                  {TOKEN_SYMBOL}
+                  <span className="chip-in"> · {raised > 0n ? "義援中" : "加勢を待つ"}</span>
+                </>
+              ) : (
+                <>
+                  {" "}
+                  / {goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "—"} {TOKEN_SYMBOL}
+                </>
+              )}
             </span>
           </span>
           <span className="muted">{fmtLeft(deadline - now)}</span>
@@ -621,7 +640,10 @@ function DetailPanel({
     user && beneficiary && user.toLowerCase() === beneficiary.toLowerCase();
 
   const rawPct = overGoalPct(raised, goalOrSoft);
-  const pct = Math.min(100, rawPct);
+  const charityOpen = kind === "charity" && goalOrSoft === 0n;
+  const pct = charityOpen
+    ? charityWarmthPct(raised)
+    : Math.min(100, rawPct);
   const hit = goalOrSoft > 0n && raised >= goalOrSoft;
   const pctLabel =
     rawPct >= 110 ? `${rawPct.toFixed(0)}%` : `${rawPct.toFixed(1)}%`;
@@ -718,9 +740,13 @@ function DetailPanel({
       </div>
 
       <div className="bar-wrap">
-        <div className="bar">
+        <div
+          className={`bar ${kind === "charity" ? "kind-charity" : "kind-crowdfund"}${
+            charityOpen ? " flow" : ""
+          }${raised > 0n && charityOpen ? " live" : ""}`}
+        >
           <div
-            className="bar-fill"
+            className={`bar-fill ${kind === "charity" ? "kind-charity" : "kind-crowdfund"}`}
             style={{
               width: `${pct}%`,
             }}
@@ -735,6 +761,9 @@ function DetailPanel({
             {kind === "charity" && goalOrSoft > 0n && (
               <> / 希望 {formatUnits(goalOrSoft, 18)}{hit ? ` · ${pctLabel} 到達` : ""}</>
             )}
+            {charityOpen && (
+              <> · {raised > 0n ? "義援中" : "最初の一枚を"}</>
+            )}
           </span>
           <span>
             {lotStatus.tone === "closed"
@@ -742,6 +771,13 @@ function DetailPanel({
               : fmtLeft(deadline - now)}
           </span>
         </div>
+        {charityOpen && (
+          <p className="bar-invite">
+            {raised > 0n
+              ? "目標額はありません。一枚の加勢が、この旗を厚くします。"
+              : "目標額はありません。最初の加勢が、この旗を動かします。"}
+          </p>
+        )}
       </div>
 
       {hit && (

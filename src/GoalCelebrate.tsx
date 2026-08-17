@@ -7,6 +7,19 @@ export function overGoalPct(raised: bigint, goal: bigint): number {
   return Number((raised * 10000n) / goal) / 100;
 }
 
+/**
+ * 義援 with no softGoal must not look empty / 0%.
+ * Visual warmth only — never label this as % of a hidden goal.
+ * 1 JPYC visible · ~1k ~50% · ~3800 ~62% · caps below 88%.
+ */
+export function charityWarmthPct(raised: bigint): number {
+  if (raised <= 0n) return 0;
+  const yen = Number(raised / 10n ** 18n);
+  if (!Number.isFinite(yen) || yen <= 0) return 14;
+  const pct = 14 + 16 * Math.log10(1 + yen);
+  return Math.max(12, Math.min(86, pct));
+}
+
 export function HankoStamp({
   className = "",
   label = "達成",

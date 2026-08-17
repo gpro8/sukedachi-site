@@ -676,6 +676,42 @@ a {
   min-width: 0;
   transition: width 0.35s ease;
 }
+.card-bar-fill.kind-charity,
+.bar-fill.kind-charity {
+  background: linear-gradient(90deg, #3d7a62, #7bb89a);
+}
+.card-bar.kind-charity.flow,
+.bar.kind-charity.flow {
+  background: linear-gradient(
+    90deg,
+    rgba(61, 122, 98, 0.12),
+    rgba(123, 184, 154, 0.22),
+    rgba(61, 122, 98, 0.12)
+  );
+  background-size: 200% 100%;
+}
+.card-bar.kind-charity.live,
+.bar.kind-charity.live {
+  animation: kizuna-flow 2.8s ease-in-out infinite;
+}
+@keyframes kizuna-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.chip-in {
+  font-weight: 700;
+  color: #3d7a62;
+}
+html[data-theme="dark"] .chip-in {
+  color: #8fbfa6;
+}
+.bar-invite {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: var(--earth);
+  font-weight: 600;
+}
 .detail-creator {
   display: flex;
   align-items: center;
@@ -1027,12 +1063,14 @@ a.disabled-link {
   backdrop-filter: blur(4px);
 }
 .pill.crowdfund {
-  color: var(--accent);
-  border-color: rgba(205, 94, 60, 0.35);
+  color: #fff8f0;
+  background: #6b4533;
+  border-color: #5a3a28;
 }
 .pill.charity {
-  color: var(--blue);
-  border-color: rgba(69, 87, 101, 0.35);
+  color: #f7fbf8;
+  background: #3d7a62;
+  border-color: #2e5d4b;
 }
 .pill.status-open {
   color: var(--ok);
