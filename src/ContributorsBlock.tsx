@@ -15,8 +15,20 @@ import {
   formatXHandleDisplay,
   xProfileUrl,
 } from "./faq";
+import { showToast } from "./Toast";
 
 const PREVIEW = 5;
+
+async function copyText(text: string, ok: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(ok, "ok");
+    return true;
+  } catch {
+    showToast("コピーに失敗 — 長押しで選択", "err");
+    return false;
+  }
+}
 
 export function ContributorsBlock({
   campaign,
@@ -88,7 +100,40 @@ export function ContributorsBlock({
             <span className="contributors-count"> · {rows.length}</span>
           ) : null}
         </h3>
-        {loading && <span className="contributors-status">読込中…</span>}
+        <div className="contributors-head-actions">
+          {loading && <span className="contributors-status">読込中…</span>}
+          {opened && !loading && rows && rows.length > 0 && (
+            <button
+              type="button"
+              className="contributors-export"
+              onClick={() => {
+                const text = rows.map((r) => r.address).join("\n");
+                void (async () => {
+                  const ok = await copyText(
+                    text,
+                    `${rows.length}件のアドレスをコピーしました`
+                  );
+                  if (!ok) return;
+                  try {
+                    const blob = new Blob([`${text}\n`], {
+                      type: "text/plain;charset=utf-8",
+                    });
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `sukedachi-${campaign.slice(0, 10)}.txt`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  } catch {
+                    /* clipboard already succeeded */
+                  }
+                })();
+              }}
+              title="全ウォレットを1行ずつコピー／保存（恩返し・NFT配布向け）"
+            >
+              ウォレットを書き出す
+            </button>
+          )}
+        </div>
       </div>
 
       {!opened && !loading && (
@@ -142,9 +187,16 @@ export function ContributorsBlock({
                   className="contributor-av"
                 />
                 <div className="contributor-who">
-                  <span className="contributor-name" title={r.address}>
+                  <button
+                    type="button"
+                    className="contributor-name"
+                    title={`${r.address} · タップでコピー`}
+                    onClick={() =>
+                      void copyText(r.address, "アドレスをコピーしました")
+                    }
+                  >
                     {show ? name : shortAddr(r.address)}
-                  </span>
+                  </button>
                   {xUrl ? (
                     <a
                       className="x-link"
