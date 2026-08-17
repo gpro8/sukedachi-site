@@ -9,7 +9,7 @@ import {
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi";
-import { formatUnits, parseUnits, decodeEventLog, type Address, type Log } from "viem";
+import { formatUnits, parseUnits, decodeEventLog, zeroAddress, type Address, type Log } from "viem";
 import {
   CHAIN,
   CHARITY_ABI,
@@ -78,6 +78,16 @@ import {
 import { initTheme, toggleTheme, type ThemeMode } from "./theme";
 
 type Kind = "crowdfund" | "charity" | "unknown";
+
+/** 皆済 has pledged(); 義援 has softGoal only. Do not trust empty goal() as crowdfund. */
+function kindFromProbes(
+  pledged: { status?: string } | undefined,
+  soft: { status?: string } | undefined
+): Kind {
+  if (pledged?.status === "success") return "crowdfund";
+  if (soft?.status === "success") return "charity";
+  return "unknown";
+}
 
 type Meta = CampaignMeta;
 
@@ -997,7 +1007,7 @@ function MyPagePanel({
 
   const { data: kindProbes } = useReadContracts({
     contracts: mine.flatMap((a) => [
-      { address: a, abi: CROWDFUND_ABI, functionName: "goal" },
+      { address: a, abi: CROWDFUND_ABI, functionName: "pledged", args: [zeroAddress] },
       { address: a, abi: CHARITY_ABI, functionName: "softGoal" },
     ]) as any,
     query: { enabled: mine.length > 0 },
@@ -1005,11 +1015,9 @@ function MyPagePanel({
 
   const kinds: Kind[] = useMemo(() => {
     if (!kindProbes) return mine.map(() => "unknown" as Kind);
-    return mine.map((_, i) => {
-      if (kindProbes[i * 2]?.status === "success") return "crowdfund";
-      if (kindProbes[i * 2 + 1]?.status === "success") return "charity";
-      return "unknown";
-    });
+    return mine.map((_, i) =>
+      kindFromProbes(kindProbes[i * 2], kindProbes[i * 2 + 1])
+    );
   }, [mine, kindProbes]);
 
   const { writeContractAsync } = useWriteContract();
@@ -2040,7 +2048,7 @@ export default function App() {
   // Detect kind via crowdfund goal() success vs charity
   const { data: kindProbes } = useReadContracts({
     contracts: addresses.flatMap((a) => [
-      { address: a, abi: CROWDFUND_ABI, functionName: "goal" },
+      { address: a, abi: CROWDFUND_ABI, functionName: "pledged", args: [zeroAddress] },
       { address: a, abi: CHARITY_ABI, functionName: "softGoal" },
     ]) as any,
     query: { enabled: addresses.length > 0 },
@@ -2048,13 +2056,9 @@ export default function App() {
 
   const kinds: Kind[] = useMemo(() => {
     if (!kindProbes) return addresses.map(() => "unknown" as Kind);
-    return addresses.map((_, i) => {
-      const goalRes = kindProbes[i * 2];
-      if (goalRes?.status === "success") return "crowdfund";
-      const soft = kindProbes[i * 2 + 1];
-      if (soft?.status === "success") return "charity";
-      return "unknown";
-    });
+    return addresses.map((_, i) =>
+      kindFromProbes(kindProbes[i * 2], kindProbes[i * 2 + 1])
+    );
   }, [addresses, kindProbes]);
 
   const [selected, setSelected] = useState<Address | null>(null);

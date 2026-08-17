@@ -42,6 +42,7 @@ const SEL = {
   campaigns: "141961bc",
   goal: "40193883",
   softGoal: "647befef",
+  pledged: "6b81e11b",
   totalRaised: "c5c4744c",
   deadline: "29dcb0cf",
   state: "c19d93fb",
@@ -248,6 +249,16 @@ function pad32(hexNo0x) {
   return hexNo0x.replace(/^0x/, "").toLowerCase().padStart(64, "0");
 }
 
+function hasWord(hex) {
+  return typeof hex === "string" && hex.startsWith("0x") && hex.length >= 66;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (ch) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch])
+  );
+}
+
 function decodeUint(hex) {
   if (!hex || hex === "0x") return 0n;
   return BigInt(hex);
@@ -302,12 +313,26 @@ async function readCampaign(alchemy, address) {
 
   let kind = "crowdfund";
   let goal = 0n;
+  // pledged(address) exists only on 皆済. empty/missing goal() must NOT
+  // classify 義援 as crowdfund (eth_call "0x" decoded as 0).
+  let pledgedHex = "0x";
   try {
-    goal = decodeUint(await call(SEL.goal));
+    pledgedHex = await call(SEL.pledged, pad32("0"));
   } catch {
+    pledgedHex = "0x";
+  }
+  if (hasWord(pledgedHex)) {
+    kind = "crowdfund";
+    try {
+      goal = decodeUint(await call(SEL.goal));
+    } catch {
+      goal = 0n;
+    }
+  } else {
     kind = "charity";
     try {
-      goal = decodeUint(await call(SEL.softGoal));
+      const sg = await call(SEL.softGoal);
+      goal = hasWord(sg) ? decodeUint(sg) : 0n;
     } catch {
       goal = 0n;
     }
@@ -756,7 +781,6 @@ export default {
       request.method === "GET" &&
       url.pathname.replace(/\/$/, "") === "/share"
     ) {
-      // Public: Twitterbot/Discordbot have no Origin — must not require CORS origin.
       const c = (url.searchParams.get("c") || "").toLowerCase();
       if (!/^0x[a-f0-9]{40}$/.test(c)) {
         return new Response("bad c", { status: 400 });
@@ -764,32 +788,49 @@ export default {
       const site = `https://gpro8.github.io/sukedachi-site/?c=${c}`;
       const shareSelf = `https://sukedachi-polygon-rpc.bushidao.workers.dev/share?c=${c}`;
       const img = "https://gpro8.github.io/sukedachi-site/og-share.jpg";
-      const title = "助太刀 Sukedachi — この旗に加勢";
-      const desc =
-        "Polygon · JPYC。皆済は目標未達なら返金、義援は All-in。BushiDAO。";
+      let title = "助太刀 Sukedachi";
+      let desc = "Polygon · JPYC · BushiDAO";
+      const alchemy = env.POLYGON_RPC_URL;
+      if (alchemy) {
+        try {
+          const camp = await readCampaign(alchemy, c);
+          const name = camp.title || "旗";
+          if (camp.kind === "charity") {
+            title = `義援（All-in）· ${name}`;
+            desc = `${name} — 義援は期間内 All-in（返金なし）。Polygon · JPYC · BushiDAO`;
+          } else {
+            title = `皆済（AoN）· ${name}`;
+            desc = `${name} — 皆済は目標未達なら返金。Polygon · JPYC · BushiDAO`;
+          }
+        } catch {
+          /* keep generic — do not mention only 皆済 */
+        }
+      }
+      const t = escapeHtml(title);
+      const d = escapeHtml(desc);
       const html = `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>${title}</title>
-<meta name="description" content="${desc}"/>
+<title>${t}</title>
+<meta name="description" content="${d}"/>
 <meta property="og:type" content="website"/>
 <meta property="og:locale" content="ja_JP"/>
 <meta property="og:site_name" content="助太刀 Sukedachi"/>
-<meta property="og:title" content="${title}"/>
-<meta property="og:description" content="${desc}"/>
+<meta property="og:title" content="${t}"/>
+<meta property="og:description" content="${d}"/>
 <meta property="og:url" content="${shareSelf}"/>
 <meta property="og:image" content="${img}"/>
 <meta property="og:image:type" content="image/jpeg"/>
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
-<meta property="og:image:alt" content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"/>
+<meta property="og:image:alt" content="${t}"/>
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="${title}"/>
-<meta name="twitter:description" content="${desc}"/>
+<meta name="twitter:title" content="${t}"/>
+<meta name="twitter:description" content="${d}"/>
 <meta name="twitter:image" content="${img}"/>
-<meta name="twitter:image:alt" content="助太刀 Sukedachi · BushiDAO · Polygon · JPYC"/>
+<meta name="twitter:image:alt" content="${t}"/>
 <link rel="canonical" href="${site}"/>
 <meta http-equiv="refresh" content="0;url=${site}"/>
 </head>
@@ -802,7 +843,7 @@ export default {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=300",
+          "Cache-Control": "public, max-age=60",
         },
       });
     }
