@@ -116,6 +116,14 @@ export function formatJpDeadline(unixSec: number): string {
   }
 }
 
+export function clipShareReturn(raw: string, max = 42): string {
+  const s = (raw || "").replace(/\s+/g, " ").trim();
+  if (!s) return "";
+  const chars = [...s];
+  if (chars.length <= max) return s;
+  return `${chars.slice(0, max).join("")}…`;
+}
+
 export function buildShareText(opts: {
   title: string;
   kindLabel: string;
@@ -123,18 +131,21 @@ export function buildShareText(opts: {
   goal: string;
   deadlineLabel: string;
   url: string;
+  returnText?: string;
 }): string {
   const goalBit =
     opts.goal && opts.goal !== "0"
       ? `${opts.raised} / ${opts.goal} JPYC`
       : `${opts.raised} JPYC`;
-  return [
+  const ret = clipShareReturn(opts.returnText || "");
+  const lines = [
     `【助太刀】${opts.title}`,
     `${opts.kindLabel} · ${goalBit}`,
     `締切 ${opts.deadlineLabel}`,
-    "仲間の加勢を募集中 #助太刀 #BushiDAO",
-    opts.url,
-  ].join("\n");
+  ];
+  if (ret) lines.push(`恩返し ${ret}`);
+  lines.push("仲間の加勢を募集中 #助太刀 #BushiDAO", opts.url);
+  return lines.join("\n");
 }
 
 export function normalizeXHandle(raw: string): string {

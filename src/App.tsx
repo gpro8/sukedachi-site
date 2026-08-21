@@ -103,6 +103,7 @@ type CreateSuccessInfo = {
   title: string;
   goalWei: bigint;
   deadlineUnix: number;
+  returnText?: string;
 };
 
 function parseCreatedFromLogs(
@@ -697,6 +698,7 @@ function DetailPanel({
                 goal: goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "0",
                 deadlineLabel: formatJpDeadline(deadline),
                 url,
+                returnText: meta.returnText,
               });
               try {
                 await navigator.clipboard.writeText(text);
@@ -720,6 +722,7 @@ function DetailPanel({
                 goal: goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "0",
                 deadlineLabel: formatJpDeadline(deadline),
                 url: campaignShareLink(address),
+                returnText: meta.returnText,
               })
             )}
             target="_blank"
@@ -1444,6 +1447,7 @@ function JustCreatedSharePanel({
     goal: info.goalWei > 0n ? goalStr : "0",
     deadlineLabel: formatJpDeadline(info.deadlineUnix),
     url: url || siteBaseFallback(),
+    returnText: info.returnText,
   });
 
   return (
@@ -1560,6 +1564,7 @@ function CreatePanel({
     title: string;
     goalWei: bigint;
     deadlineUnix: number;
+    returnText?: string;
   } | null>(null);
 
   // Restore draft once
@@ -1635,6 +1640,7 @@ function CreatePanel({
         parsed?.deadlineUnix ||
         snap?.deadlineUnix ||
         Math.floor(Date.now() / 1000),
+      returnText: snap?.returnText,
     };
     setMsg("作成完了");
     clearDraft();
@@ -1762,6 +1768,7 @@ function CreatePanel({
           title: title.trim() || "旗揚げ",
           goalWei: g,
           deadlineUnix,
+          returnText: returnText.trim() || undefined,
         };
         writeContract({
           address: FACTORY_ADDRESS,
@@ -1777,6 +1784,7 @@ function CreatePanel({
           title: title.trim() || "旗揚げ",
           goalWei: sg,
           deadlineUnix,
+          returnText: returnText.trim() || undefined,
         };
         writeContract({
           address: FACTORY_ADDRESS,
