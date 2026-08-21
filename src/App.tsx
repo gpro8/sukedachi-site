@@ -68,6 +68,7 @@ import {
 } from "./faq";
 import { showToast } from "./Toast";
 import { ContributorsBlock } from "./ContributorsBlock";
+import { fetchMyContributions, type MyContribution } from "./contributors";
 import {
   IconBook,
   IconContract,
@@ -982,67 +983,34 @@ function MyPagePanel({
 
   const mine = (myCamps as Address[] | undefined) || [];
 
-  // Contribution history: pledged amounts on all crowdfund flags
-  const { data: allCount } = useReadContract({
-    address: FACTORY_ADDRESS,
-    abi: FACTORY_ABI,
-    functionName: "campaignCount",
-    query: { enabled: !!user },
-  });
-  const allN = Number(allCount ?? 0n);
-  const allIdx = useMemo(
-    () => Array.from({ length: allN }, (_, i) => i),
-    [allN]
-  );
-  const { data: allAddrRes } = useReadContracts({
-    contracts: allIdx.map((i) => ({
-      address: FACTORY_ADDRESS,
-      abi: FACTORY_ABI,
-      functionName: "campaigns",
-      args: [BigInt(i)],
-    })) as any,
-    query: { enabled: !!user && allN > 0 },
-  });
-  const allAddrs = useMemo(() => {
-    if (!allAddrRes) return [] as Address[];
-    return allAddrRes
-      .map((r) => r.result as Address | undefined)
-      .filter((a): a is Address => !!a);
-  }, [allAddrRes]);
+  const [contributions, setContributions] = useState<MyContribution[]>([]);
+  const [contribErr, setContribErr] = useState<string | null>(null);
+  const [contribLoading, setContribLoading] = useState(false);
 
-  const { data: pledgeProbe } = useReadContracts({
-    contracts: allAddrs.flatMap((a) => [
-      {
-        address: a,
-        abi: CROWDFUND_ABI,
-        functionName: "pledged",
-        args: user ? [user] : undefined,
-      },
-      { address: a, abi: CROWDFUND_ABI, functionName: "metadataURI" },
-      { address: a, abi: CROWDFUND_ABI, functionName: "goal" },
-    ]) as any,
-    query: { enabled: !!user && allAddrs.length > 0 },
-  });
-
-  const contributions = useMemo(() => {
-    if (!pledgeProbe || !user) return [] as { addr: Address; amount: bigint; uri: string }[];
-    const out: { addr: Address; amount: bigint; uri: string }[] = [];
-    for (let i = 0; i < allAddrs.length; i++) {
-      const base = i * 3;
-      const amtRes = pledgeProbe[base];
-      const uriRes = pledgeProbe[base + 1];
-      const goalRes = pledgeProbe[base + 2];
-      if (goalRes?.status !== "success") continue; // not crowdfund
-      const amount = (amtRes?.result as bigint) ?? 0n;
-      if (amount <= 0n) continue;
-      out.push({
-        addr: allAddrs[i],
-        amount,
-        uri: String(uriRes?.result || ""),
-      });
+  const loadContribs = useCallback(async () => {
+    if (!user) {
+      setContributions([]);
+      setContribErr(null);
+      return;
     }
-    return out.reverse();
-  }, [pledgeProbe, allAddrs, user]);
+    setContribLoading(true);
+    setContribErr(null);
+    try {
+      const rows = await fetchMyContributions(user);
+      setContributions(rows);
+    } catch (e) {
+      setContributions([]);
+      setContribErr(
+        e instanceof Error ? e.message : "RPC が取れない場合は後で再試行"
+      );
+    } finally {
+      setContribLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    void loadContribs();
+  }, [loadContribs]);
 
   const { data: kindProbes } = useReadContracts({
     contracts: mine.flatMap((a) => [
@@ -1293,23 +1261,42 @@ function MyPagePanel({
       </div>
 
       <div className="surface mypage-list">
-        <h2>加勢の記録</h2>
-        <p className="hint">皆済の旗への誓約（{TOKEN_SYMBOL}）。義援の明細は今後拡充します。</p>
-        {contributions.length === 0 ? (
-          <p className="hint">まだ加勢の記録がありません。</p>
-        ) : (
+        <div className="mypage-list-head">
+          <h2>加勢・義援の記録</h2>
+          <button
+            type="button"
+            className="linkish"
+            onClick={() => void loadContribs()}
+            disabled={contribLoading}
+          >
+            {contribLoading ? "読込中…" : "最新に更新"}
+          </button>
+        </div>
+        <p className="hint">
+          皆済は現在の誓約額、義援は送金合計（{TOKEN_SYMBOL}）。
+        </p>
+        {contribErr && (
+          <p className="hint contributors-err">
+            {contribErr} — RPC が取れない場合は後で再試行してください。
+          </p>
+        )}
+        {!contribLoading && contributions.length === 0 && !contribErr ? (
+          <p className="hint">まだ加勢・義援の記録がありません。</p>
+        ) : null}
+        {contributions.length > 0 ? (
           <ul className="contrib-list">
             {contributions.map((c) => (
               <ContribRow
-                key={c.addr}
-                addr={c.addr}
+                key={c.address}
+                addr={c.address}
                 amount={c.amount}
-                uri={c.uri}
-                onOpen={() => onOpenCampaign(c.addr, "crowdfund")}
+                title={c.title}
+                kind={c.kind}
+                onOpen={() => onOpenCampaign(c.address, c.kind)}
               />
             ))}
           </ul>
-        )}
+        ) : null}
       </div>
     </section>
   );
@@ -1318,29 +1305,28 @@ function MyPagePanel({
 function ContribRow({
   addr,
   amount,
-  uri,
+  title,
+  kind,
   onOpen,
 }: {
   addr: Address;
   amount: bigint;
-  uri: string;
+  title: string;
+  kind: Kind;
   onOpen: () => void;
 }) {
-  const [title, setTitle] = useState(shortAddr(addr));
-  useEffect(() => {
-    let c = false;
-    loadMeta(uri).then((m) => {
-      if (!c && m.name) setTitle(m.name);
-    });
-    return () => {
-      c = true;
-    };
-  }, [uri]);
+  const label = title || shortAddr(addr);
+  const pill = kind === "charity" ? "義援" : kind === "crowdfund" ? "皆済" : "助太刀";
   return (
     <li>
       <button type="button" className="contrib-row" onClick={onOpen}>
-        <span className="contrib-title">{title}</span>
-        <span className="contrib-amt">{formatUnits(amount, 18)} {TOKEN_SYMBOL}</span>
+        <span className="contrib-main">
+          <span className={`pill ${kind === "unknown" ? "" : kind}`}>{pill}</span>
+          <span className="contrib-title">{label}</span>
+        </span>
+        <span className="contrib-amt">
+          {formatUnits(amount, 18)} {TOKEN_SYMBOL}
+        </span>
       </button>
     </li>
   );

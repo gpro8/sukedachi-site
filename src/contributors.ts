@@ -143,3 +143,47 @@ export async function fetchContributors(
     throw friendlyError(e);
   }
 }
+
+export type MyContribution = {
+  address: Address;
+  kind: "crowdfund" | "charity";
+  amount: bigint;
+  title: string;
+};
+
+export async function fetchMyContributions(
+  donor: Address
+): Promise<MyContribution[]> {
+  const url = `${WORKER_BASE}/contributions?donor=${donor}`;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t.slice(0, 180) || `http_${res.status}`);
+    }
+    const j = (await res.json()) as {
+      ok?: boolean;
+      rows?: { address: string; kind?: string; amount?: string; title?: string }[];
+      error?: string;
+      message?: string;
+    };
+    if (j.error) throw new Error(j.message || j.error);
+    const rows: MyContribution[] = [];
+    for (const r of j.rows || []) {
+      const amount = BigInt(r.amount || "0");
+      if (amount <= 0n || !r.address) continue;
+      rows.push({
+        address: r.address as Address,
+        kind: r.kind === "charity" ? "charity" : "crowdfund",
+        amount,
+        title: r.title || "",
+      });
+    }
+    return rows;
+  } catch (e) {
+    throw friendlyError(e);
+  }
+}

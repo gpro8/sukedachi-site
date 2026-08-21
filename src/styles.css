@@ -988,6 +988,12 @@ a.disabled-link {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.contrib-main {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
 .contrib-amt {
   font-variant-numeric: tabular-nums;
   color: var(--earth, #6b5a3e);

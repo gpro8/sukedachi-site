@@ -680,6 +680,131 @@ async function handleContributors(request, env, cors) {
   return res;
 }
 
+/** Path A: donor history. 皆済 = pledged(); 義援 = JPYC sent to that flag (no donated mapping). */
+async function fetchOutboundJpycToCampaigns(alchemy, donor, campaignSet) {
+  const map = new Map(); // campaign -> bigint
+  let pageKey;
+  let pages = 0;
+  do {
+    const params = {
+      fromBlock: "0x" + FACTORY_DEPLOY_BLOCK.toString(16),
+      toBlock: "latest",
+      fromAddress: donor,
+      contractAddresses: [JPYC],
+      category: ["erc20"],
+      excludeZeroValue: true,
+      maxCount: "0x3e8",
+      order: "asc",
+      withMetadata: false,
+    };
+    if (pageKey) params.pageKey = pageKey;
+    const result = await rpc(alchemy, "alchemy_getAssetTransfers", [params]);
+    const transfers = (result && result.transfers) || [];
+    for (const t of transfers) {
+      const to = (t.to || "").toLowerCase();
+      if (!campaignSet.has(to)) continue;
+      let amount = 0n;
+      const raw = t.rawContract && t.rawContract.value;
+      if (raw) amount = BigInt(raw);
+      else if (t.value != null) {
+        const s = String(t.value);
+        if (s.includes(".")) {
+          const [a, b = ""] = s.split(".");
+          const frac = (b + "000000000000000000").slice(0, 18);
+          amount = BigInt(a || "0") * 10n ** 18n + BigInt(frac || "0");
+        } else {
+          amount = BigInt(s || "0") * 10n ** 18n;
+        }
+      }
+      if (amount <= 0n) continue;
+      map.set(to, (map.get(to) || 0n) + amount);
+    }
+    pageKey = result && result.pageKey;
+    pages += 1;
+  } while (pageKey && pages < 8);
+  return map;
+}
+
+async function handleDonorContributions(request, env, cors) {
+  const url = new URL(request.url);
+  const donor = (url.searchParams.get("donor") || "").toLowerCase();
+  if (!/^0x[a-f0-9]{40}$/.test(donor)) {
+    return json({ error: "bad_donor" }, 400, cors);
+  }
+  const alchemy = env.POLYGON_RPC_URL;
+  if (!alchemy) return json({ error: "misconfigured" }, 500, cors);
+
+  const cache = caches.default;
+  const cacheUrl = new URL(
+    `https://sukedachi-contrib.cache/v1-donor/${donor}`
+  );
+  const cacheReq = new Request(cacheUrl.toString(), { method: "GET" });
+  if (url.searchParams.get("nocache") !== "1") {
+    const hit = await cache.match(cacheReq);
+    if (hit) {
+      const h = new Headers(hit.headers);
+      Object.entries(cors).forEach(([k, v]) => h.set(k, v));
+      return new Response(hit.body, { status: hit.status, headers: h });
+    }
+  }
+
+  const listed = await listCampaigns(alchemy, "all");
+  const camps = listed.campaigns || [];
+  const campSet = new Set(camps.map((c) => c.address.toLowerCase()));
+  const sent = await fetchOutboundJpycToCampaigns(alchemy, donor, campSet);
+
+  const rows = [];
+  for (const c of camps) {
+    const addr = c.address.toLowerCase();
+    let amount = 0n;
+    if (c.kind === "charity") {
+      amount = sent.get(addr) || 0n;
+    } else {
+      try {
+        const hex = await ethCall(
+          alchemy,
+          addr,
+          "0x" + SEL.pledged + pad32(donor)
+        );
+        amount = hasWord(hex) ? decodeUint(hex) : 0n;
+      } catch {
+        amount = 0n;
+      }
+    }
+    if (amount <= 0n) continue;
+    rows.push({
+      address: addr,
+      kind: c.kind,
+      amount: amount.toString(),
+      title: c.title || "",
+      state: c.state,
+      stateLabel: c.stateLabel,
+    });
+  }
+
+  const body = JSON.stringify({
+    ok: true,
+    donor,
+    count: rows.length,
+    source: "pledged+transfers",
+    rows,
+  });
+  const res = new Response(body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=60",
+      ...cors,
+    },
+  });
+  try {
+    await cache.put(cacheReq, res.clone());
+  } catch {
+    /* */
+  }
+  return res;
+}
+
 export default {
   async fetch(request, env) {
     const allowed = parseOrigins(env);
@@ -869,6 +994,27 @@ export default {
       }
     }
 
+    if (
+      request.method === "GET" &&
+      url.pathname.replace(/\/$/, "") === "/contributions"
+    ) {
+      if (!originAllowed(origin, allowed)) {
+        return json({ error: "origin_not_allowed" }, 403, cors);
+      }
+      try {
+        return await handleDonorContributions(request, env, cors);
+      } catch (e) {
+        return json(
+          {
+            error: "contributions_failed",
+            message: e && e.message ? String(e.message).slice(0, 200) : "failed",
+          },
+          502,
+          cors
+        );
+      }
+    }
+
     if (request.method === "GET") {
       return json(
         {
@@ -882,6 +1028,7 @@ export default {
             "GET /openapi.json",
             "GET /share?c=0x",
             "GET /contributors?address=0x",
+            "GET /contributions?donor=0x",
             "POST / json-rpc",
           ],
         },
