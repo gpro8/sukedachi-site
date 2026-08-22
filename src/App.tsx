@@ -74,7 +74,6 @@ import {
   IconContract,
   IconList,
   IconMoon,
-  IconNobori,
   IconRaise,
   IconScroll,
   IconSun,
@@ -2164,7 +2163,13 @@ export default function App() {
       <header className="top">
         <div className="brand">
           <span className="logo" aria-hidden>
-            <IconNobori className="logo-icon" />
+            <img
+              className="logo-img"
+              src={`${import.meta.env.BASE_URL}logo-header.png`}
+              alt=""
+              width={48}
+              height={48}
+            />
           </span>
           <div className="brand-text">
             <div className="brand-name">助太刀 Sukedachi</div>
