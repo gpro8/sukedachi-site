@@ -912,7 +912,7 @@ export default {
       }
       const site = `https://gpro8.github.io/sukedachi-site/?c=${c}`;
       const shareSelf = `https://sukedachi-polygon-rpc.bushidao.workers.dev/share?c=${c}`;
-      const img = "https://gpro8.github.io/sukedachi-site/og-share.jpg";
+      const img = "https://gpro8.github.io/sukedachi-site/og-share.jpg?v=20260823";
       let title = "助太刀 Sukedachi";
       let desc = "Polygon · JPYC · BushiDAO";
       const alchemy = env.POLYGON_RPC_URL;
