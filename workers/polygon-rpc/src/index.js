@@ -118,6 +118,42 @@ async function rpc(url, method, params) {
   return j.result;
 }
 
+/** One HTTP POST for many JSON-RPC calls (1 Worker subrequest). */
+async function rpcBatch(url, items) {
+  if (!items.length) return [];
+  const CHUNK = 80;
+  const out = new Array(items.length);
+  for (let off = 0; off < items.length; off += CHUNK) {
+    const slice = items.slice(off, off + CHUNK);
+    const body = slice.map((it, i) => ({
+      jsonrpc: "2.0",
+      id: off + i + 1,
+      method: it.method,
+      params: it.params,
+    }));
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const j = await res.json();
+    const arr = Array.isArray(j) ? j : [j];
+    const byId = new Map(arr.map((x) => [x.id, x]));
+    for (let i = 0; i < slice.length; i++) {
+      const r = byId.get(off + i + 1);
+      out[off + i] = r && !r.error ? r.result : null;
+    }
+  }
+  return out;
+}
+
+function ethCallItem(to, data) {
+  return {
+    method: "eth_call",
+    params: [{ to, data }, "latest"],
+  };
+}
+
 function decodeAbiStringTuple3(hex) {
   if (!hex || hex === "0x" || hex.length < 2 + 64 * 3) {
     return { name: "", imageURI: "", xHandle: "" };
@@ -302,36 +338,38 @@ async function ethCall(alchemy, to, data) {
   return rpc(alchemy, "eth_call", [{ to, data }, "latest"]);
 }
 
-async function readCampaign(alchemy, address) {
-  const addr = address.toLowerCase();
-  const call = (sel, arg) =>
-    ethCall(
-      alchemy,
-      addr,
-      "0x" + sel + (arg != null ? pad32(arg) : "")
-    );
+const CAMP_CALLS = [
+  ["pledged", () => SEL.pledged + pad32("0")],
+  ["goal", () => SEL.goal],
+  ["softGoal", () => SEL.softGoal],
+  ["totalRaised", () => SEL.totalRaised],
+  ["deadline", () => SEL.deadline],
+  ["state", () => SEL.state],
+  ["metadataURI", () => SEL.metadataURI],
+  ["creator", () => SEL.creator],
+  ["beneficiary", () => SEL.beneficiary],
+  ["isLive", () => SEL.isLive],
+];
 
+function campaignFromHexes(addr, hexes) {
+  const g = (name) => {
+    const i = CAMP_CALLS.findIndex((x) => x[0] === name);
+    return hexes[i] || "0x";
+  };
+  const pledgedHex = g("pledged");
   let kind = "crowdfund";
   let goal = 0n;
-  // pledged(address) exists only on 皆済. empty/missing goal() must NOT
-  // classify 義援 as crowdfund (eth_call "0x" decoded as 0).
-  let pledgedHex = "0x";
-  try {
-    pledgedHex = await call(SEL.pledged, pad32("0"));
-  } catch {
-    pledgedHex = "0x";
-  }
   if (hasWord(pledgedHex)) {
     kind = "crowdfund";
     try {
-      goal = decodeUint(await call(SEL.goal));
+      goal = hasWord(g("goal")) ? decodeUint(g("goal")) : 0n;
     } catch {
       goal = 0n;
     }
   } else {
     kind = "charity";
     try {
-      const sg = await call(SEL.softGoal);
+      const sg = g("softGoal");
       goal = hasWord(sg) ? decodeUint(sg) : 0n;
     } catch {
       goal = 0n;
@@ -345,39 +383,38 @@ async function readCampaign(alchemy, address) {
   let creator = null;
   let beneficiary = null;
   let isLive = false;
-
   try {
-    raised = decodeUint(await call(SEL.totalRaised));
+    raised = hasWord(g("totalRaised")) ? decodeUint(g("totalRaised")) : 0n;
   } catch {
     /* */
   }
   try {
-    deadline = Number(decodeUint(await call(SEL.deadline)));
+    deadline = hasWord(g("deadline")) ? Number(decodeUint(g("deadline"))) : 0;
   } catch {
     /* */
   }
   try {
-    state = Number(decodeUint(await call(SEL.state)));
+    state = hasWord(g("state")) ? Number(decodeUint(g("state"))) : 0;
   } catch {
     /* */
   }
   try {
-    metaUri = decodeString(await call(SEL.metadataURI));
+    metaUri = decodeString(g("metadataURI"));
   } catch {
     /* */
   }
   try {
-    creator = decodeAddress(await call(SEL.creator));
+    creator = decodeAddress(g("creator"));
   } catch {
     /* */
   }
   try {
-    beneficiary = decodeAddress(await call(SEL.beneficiary));
+    beneficiary = decodeAddress(g("beneficiary"));
   } catch {
     /* */
   }
   try {
-    isLive = decodeBool(await call(SEL.isLive));
+    isLive = decodeBool(g("isLive"));
   } catch {
     isLive = state === 0 && deadline * 1000 > Date.now();
   }
@@ -417,9 +454,7 @@ async function readCampaign(alchemy, address) {
     raised: raised.toString(),
     raisedHuman: human18(raised),
     deadline,
-    deadlineIso: deadline
-      ? new Date(deadline * 1000).toISOString()
-      : null,
+    deadlineIso: deadline ? new Date(deadline * 1000).toISOString() : null,
     isLive,
     openForPledge,
     creator,
@@ -432,27 +467,58 @@ async function readCampaign(alchemy, address) {
   };
 }
 
+async function readCampaign(alchemy, address) {
+  const addr = address.toLowerCase();
+  const hexes = await rpcBatch(
+    alchemy,
+    CAMP_CALLS.map(([, sel]) => ethCallItem(addr, "0x" + sel()))
+  );
+  return campaignFromHexes(addr, hexes);
+}
+
 async function listCampaigns(alchemy, statusFilter) {
+  const nMax = 100;
   const countHex = await ethCall(alchemy, FACTORY, "0x" + SEL.campaignCount);
-  const count = Number(decodeUint(countHex));
+  const count = countHex && hasWord(countHex) ? Number(decodeUint(countHex)) : 0;
+  const n = Math.min(count, nMax);
+  if (n <= 0) {
+    return { count: 0, totalOnChain: count, campaigns: [] };
+  }
+  const addrHexes = await rpcBatch(
+    alchemy,
+    Array.from({ length: n }, (_, i) =>
+      ethCallItem(FACTORY, "0x" + SEL.campaigns + pad32(i.toString(16)))
+    )
+  );
+  const addrs = [];
+  for (let i = 0; i < n; i++) {
+    const addr = decodeAddress(addrHexes[i]);
+    if (addr) addrs.push(addr);
+  }
+  if (!addrs.length) {
+    return { count: 0, totalOnChain: count, campaigns: [] };
+  }
+  const fieldItems = [];
+  for (const addr of addrs) {
+    for (const [, sel] of CAMP_CALLS) {
+      fieldItems.push(ethCallItem(addr, "0x" + sel()));
+    }
+  }
+  const fieldHex = await rpcBatch(alchemy, fieldItems);
+  const width = CAMP_CALLS.length;
   const out = [];
-  for (let i = 0; i < count && i < 100; i++) {
-    const addrHex = await ethCall(
-      alchemy,
-      FACTORY,
-      "0x" + SEL.campaigns + pad32(i.toString(16))
-    );
-    const addr = decodeAddress(addrHex);
-    if (!addr) continue;
+  for (let i = 0; i < addrs.length; i++) {
     try {
-      const c = await readCampaign(alchemy, addr);
+      const c = campaignFromHexes(
+        addrs[i],
+        fieldHex.slice(i * width, i * width + width)
+      );
       if (statusFilter === "open" && !c.openForPledge) continue;
       out.push(c);
     } catch {
       /* skip broken */
     }
   }
-  // newest first
   out.reverse();
   return { count: out.length, totalOnChain: count, campaigns: out };
 }
