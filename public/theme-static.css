@@ -1,0 +1,60 @@
+/* Shared 陰/陽 tokens for static pages. Key = bushi.theme (same as SPA). */
+:root,
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f1ea;
+  --panel: #fffcf7;
+  --border: #d9d0bf;
+  --text: #1f3134;
+  --muted: #6c7a7f;
+  --accent: #cd5e3c;
+  --accent-hover: #b84e30;
+  --earth: #917347;
+  --ok: #5b6356;
+  --danger: #c53d43;
+  --radius: 16px;
+  --shadow: 0 8px 28px rgba(31, 49, 52, 0.08);
+  --input-bg: #ffffff;
+  --chrome: rgba(255, 252, 247, 0.96);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1b1916;
+  --panel: #252320;
+  --border: #3d3830;
+  --text: #ede8da;
+  --muted: #a3998c;
+  --accent: #d4785a;
+  --accent-hover: #e08a6c;
+  --earth: #c6a24f;
+  --ok: #8fa083;
+  --danger: #e07878;
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+  --input-bg: #2a2622;
+  --chrome: rgba(37, 35, 32, 0.96);
+}
+.top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.theme-toggle-static {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.theme-toggle-static:hover {
+  border-color: var(--earth);
+  color: var(--earth);
+}

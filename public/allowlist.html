@@ -5,23 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>助太刀 · 旗揚げアローリスト提出</title>
 <meta name="description" content="Sukedachi allowlist wallet submission — BushiDAO" />
+<script>
+(function(){try{var t=localStorage.getItem("bushi.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}}catch(e){}})();
+</script>
+<link rel="stylesheet" href="./theme-static.css" />
 <style>
-  :root {
-    color-scheme: light;
-    --bg: #f4f1ea;
-    --panel: #fffcf7;
-    --border: #d9d0bf;
-    --text: #1f3134;
-    --muted: #6c7a7f;
-    --accent: #cd5e3c;
-    --accent-hover: #b84e30;
-    --earth: #917347;
-    --ok: #5b6356;
-    --danger: #c53d43;
-    --radius: 16px;
-    --shadow: 0 8px 28px rgba(31, 49, 52, 0.08);
-    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     min-height: 100vh;
@@ -32,11 +20,11 @@
     background-repeat: repeat;
     line-height: 1.55;
     padding: 2rem 1rem 3rem;
+    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
   }
   .wrap { width: 100%; max-width: 540px; margin: 0 auto; }
   .top-link {
     display: inline-block;
-    margin-bottom: 1rem;
     font-size: 0.88rem;
     color: var(--earth);
     text-decoration: none;
@@ -88,7 +76,7 @@
   .field { margin-bottom: 1.1rem; }
   input[type="text"] {
     width: 100%;
-    background: #fff;
+    background: var(--input-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text);
@@ -159,7 +147,7 @@
   .done p { color: var(--muted); font-size: 0.88rem; }
   .addr-chip {
     display: inline-block; margin-top: 0.85rem; padding: 0.5rem 0.75rem;
-    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px;
     font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem;
     color: var(--earth); word-break: break-all;
   }
@@ -175,7 +163,10 @@
 </head>
 <body>
 <div class="wrap">
-  <a class="top-link" href="./">← 助太刀トップ</a>
+  <div class="top-row">
+    <a class="top-link" href="./">← 助太刀トップ</a>
+    <button type="button" class="theme-toggle-static" id="themeToggle" aria-label="陰モード">陰</button>
+  </div>
   <div class="hero-copy">
     <div class="eyebrow">SUKEDACHI · ALLOWLIST</div>
     <h1>旗揚げアローリスト提出</h1>
@@ -220,6 +211,7 @@
   <footer>助太刀 Sukedachi · BushiDAO</footer>
 </div>
 
+<script src="./theme-static.js"></script>
 <script>
 (function () {
   /* endpoint assembled at runtime — rotate in Discord if leaked */

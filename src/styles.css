@@ -168,7 +168,7 @@ a {
   border-radius: 12px;
   display: block;
   overflow: hidden;
-  background: #f4efe6;
+  background: linear-gradient(160deg, var(--logo-from), var(--logo-to));
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow);
   flex: 0 0 auto;
@@ -177,6 +177,15 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+.logo-img-dark {
+  display: none;
+}
+html[data-theme="dark"] .logo-img-light {
+  display: none;
+}
+html[data-theme="dark"] .logo-img-dark {
   display: block;
 }
 

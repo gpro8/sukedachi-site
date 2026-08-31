@@ -2164,8 +2164,15 @@ export default function App() {
         <div className="brand">
           <span className="logo" aria-hidden>
             <img
-              className="logo-img"
+              className="logo-img logo-img-light"
               src={`${import.meta.env.BASE_URL}logo-header.png`}
+              alt=""
+              width={48}
+              height={48}
+            />
+            <img
+              className="logo-img logo-img-dark"
+              src={`${import.meta.env.BASE_URL}logo-header-dark.png`}
               alt=""
               width={48}
               height={48}

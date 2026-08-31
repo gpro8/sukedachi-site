@@ -5,20 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>利用上の注意 · 助太刀 Sukedachi</title>
 <meta name="description" content="助太刀（Sukedachi）利用上の注意 — BushiDAO。スマートコントラクト・JPYC・自己責任について。" />
+<script>
+(function(){try{var t=localStorage.getItem("bushi.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}}catch(e){}})();
+</script>
+<link rel="stylesheet" href="./theme-static.css" />
 <style>
-  :root {
-    color-scheme: light;
-    --bg: #f4f1ea;
-    --panel: #fffcf7;
-    --border: #d9d0bf;
-    --text: #1f3134;
-    --muted: #6c7a7f;
-    --accent: #cd5e3c;
-    --earth: #917347;
-    --radius: 16px;
-    --shadow: 0 8px 28px rgba(31, 49, 52, 0.08);
-    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
-  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     min-height: 100vh;
@@ -29,11 +20,11 @@
     background-repeat: repeat;
     line-height: 1.7;
     padding: 2rem 1rem 3.5rem;
+    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
   }
   .wrap { width: 100%; max-width: 640px; margin: 0 auto; }
   .top-link {
     display: inline-block;
-    margin-bottom: 1rem;
     font-size: 0.88rem;
     color: var(--earth);
     text-decoration: none;
@@ -101,7 +92,10 @@
 </head>
 <body>
   <div class="wrap">
-    <a class="top-link" href="./">← 助太刀トップ</a>
+    <div class="top-row">
+      <a class="top-link" href="./">← 助太刀トップ</a>
+      <button type="button" class="theme-toggle-static" id="themeToggle" aria-label="陰モード">陰</button>
+    </div>
     <article class="card">
       <div class="eyebrow">BUSHIDAO · SUKEDACHI</div>
       <h1>利用上の注意</h1>
@@ -186,5 +180,6 @@
     </article>
     <p class="foot">助太刀 Sukedachi · BushiDAO · Polygon · JPYC</p>
   </div>
+<script src="./theme-static.js"></script>
 </body>
 </html>
