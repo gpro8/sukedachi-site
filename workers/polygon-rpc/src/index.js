@@ -79,6 +79,85 @@ function originAllowed(origin, allowed) {
   return false;
 }
 
+const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+
+function clipField(s, max) {
+  return String(s || "")
+    .replace(/[\r\n`]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+async function alRateOk(request) {
+  const ip = request.headers.get("CF-Connecting-IP") || "0";
+  const hour = Math.floor(Date.now() / 3_600_000);
+  const key = new Request(`https://sukedachi-al.rate/${ip}/${hour}`);
+  const cache = caches.default;
+  let n = 0;
+  try {
+    const hit = await cache.match(key);
+    if (hit) n = Number(await hit.text()) || 0;
+  } catch {
+    /* */
+  }
+  if (n >= 5) return false;
+  try {
+    await cache.put(
+      key,
+      new Response(String(n + 1), {
+        headers: { "Cache-Control": "max-age=3600" },
+      })
+    );
+  } catch {
+    /* */
+  }
+  return true;
+}
+
+async function handleAlSubmit(request, env, cors, origin, allowed) {
+  if (!originAllowed(origin, allowed)) {
+    return json({ error: "origin_not_allowed" }, 403, cors);
+  }
+  const hook = env.DISCORD_AL_WEBHOOK_URL;
+  if (!hook || !String(hook).startsWith("https://discord.com/api/webhooks/")) {
+    return json({ error: "misconfigured" }, 500, cors);
+  }
+  if (!(await alRateOk(request))) {
+    return json({ error: "rate_limited" }, 429, cors);
+  }
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid_json" }, 400, cors);
+  }
+  const wallet = clipField(body && body.wallet, 42);
+  const x = clipField(body && (body.x || body.xname), 40).replace(/^@/, "");
+  const discord = clipField(body && body.discord, 40);
+  if (!ADDR_RE.test(wallet) || !x || !discord) {
+    return json({ error: "invalid_fields" }, 400, cors);
+  }
+  const content =
+    "**助太刀 AL 提出**\nX: `" +
+    x +
+    "`\nDiscord: `" +
+    discord +
+    "`\nWallet: `" +
+    wallet +
+    "`\nAt: " +
+    new Date().toISOString();
+  const res = await fetch(hook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content }),
+  });
+  if (!res.ok) {
+    return json({ error: "upstream" }, 502, cors);
+  }
+  return json({ ok: true }, 200, cors);
+}
+
 function corsHeaders(origin, allowed) {
   const allow = originAllowed(origin, allowed) ? origin : allowed[0] || "";
   return {
@@ -1095,12 +1174,20 @@ export default {
             "GET /share?c=0x",
             "GET /contributors?address=0x",
             "GET /contributions?donor=0x",
+            "POST /v1/al",
             "POST / json-rpc",
           ],
         },
         200,
         publicCors(origin)
       );
+    }
+
+    if (request.method === "POST") {
+      const path = url.pathname.replace(/\/$/, "") || "/";
+      if (path === "/v1/al") {
+        return handleAlSubmit(request, env, cors, origin, allowed);
+      }
     }
 
     if (request.method !== "POST") {

@@ -214,10 +214,7 @@
 <script src="./theme-static.js"></script>
 <script>
 (function () {
-  /* endpoint assembled at runtime — rotate in Discord if leaked */
-  var ep = atob(
-    "aHR0cHM6Ly9kaXNjb3JkLmNvbS9hcGkvd2ViaG9va3MvMTUzNDQ1NzE4MzU5MTQ2OTA3Ni9CV204UDRvb2phMmw5aDgtdkpCZnFRTlAyX3UtUVZmRVlkRVBZb1M3SmViVHRJRjFRZ3BBYUVEaDRIS0ZiUkNYVndVRA=="
-  );
+  var ep = "https://sukedachi-polygon-rpc.bushidao.workers.dev/v1/al";
 
   var walletEl = document.getElementById("wallet");
   var xEl = document.getElementById("xname");
@@ -273,20 +270,11 @@
     btn.textContent = "送信中…";
     var x = xEl.value.trim().replace(/^@/, "");
     var disc = dEl.value.trim();
-    var content =
-      "**助太刀 AL 提出**\nX: `" +
-      x +
-      "`\nDiscord: `" +
-      disc +
-      "`\nWallet: `" +
-      addr +
-      "`\nAt: " +
-      new Date().toISOString();
 
     fetch(ep, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: content }),
+      body: JSON.stringify({ x: x, discord: disc, wallet: addr }),
     })
       .then(function (res) {
         if (!res.ok) throw new Error("fail");
