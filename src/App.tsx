@@ -42,6 +42,7 @@ import {
   HankoStamp,
   charityWarmthPct,
   overGoalPct,
+  useEnterOnce,
 } from "./GoalCelebrate";
 import { buildCoverDataUri } from "./cover";
 import { prepareImageFile, friendlyTxError, MAX_PFP_CHARS, PFP_MAX_EDGE } from "./imagePrep";
@@ -357,10 +358,17 @@ function CampaignCard({
     : goalOrSoft > 0n
       ? Math.min(100, Number((raised * 10000n) / goalOrSoft) / 100)
       : 0;
+  const { ref: barRef, shown: barShown } = useEnterOnce<HTMLButtonElement>();
+  const fillPct = barShown ? barPct : 0;
+  const showCrowdfundPct =
+    kind === "crowdfund" && goalOrSoft > 0n && !hit && raised > 0n;
+  const crowdfundPctLabel =
+    rawPct >= 10 ? `${rawPct.toFixed(0)}%` : `${rawPct.toFixed(1)}%`;
 
   return (
     <button
       type="button"
+      ref={barRef}
       className={`card ${selected ? "selected" : ""} ${hit ? "card-hit" : ""}`}
       onClick={onSelect}
     >
@@ -402,7 +410,7 @@ function CampaignCard({
           >
             <div
               className={`card-bar-fill ${kind === "charity" ? "kind-charity" : "kind-crowdfund"}`}
-              style={{ width: `${barPct}%` }}
+              style={{ width: `${fillPct}%` }}
             />
           </div>
         </div>
@@ -420,6 +428,9 @@ function CampaignCard({
                 <>
                   {" "}
                   / {goalOrSoft > 0n ? formatUnits(goalOrSoft, 18) : "—"} {TOKEN_SYMBOL}
+                  {showCrowdfundPct && (
+                    <span className="card-pct"> · {crowdfundPctLabel}</span>
+                  )}
                 </>
               )}
             </span>

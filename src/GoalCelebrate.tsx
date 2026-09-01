@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const LS = "sukedachi.celebrate.v1.";
 
@@ -18,6 +18,32 @@ export function charityWarmthPct(raised: bigint): number {
   if (!Number.isFinite(yen) || yen <= 0) return 14;
   const pct = 14 + 16 * Math.log10(1 + yen);
   return Math.max(12, Math.min(86, pct));
+}
+
+/** Once: card enters viewport → bar may grow. Reduced motion = already shown. */
+export function useEnterOnce<T extends HTMLElement = HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (shown) return;
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        setShown(true);
+        io.disconnect();
+      },
+      { threshold: 0.35 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [shown]);
+  return { ref, shown };
 }
 
 export function HankoStamp({

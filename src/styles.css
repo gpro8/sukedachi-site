@@ -678,7 +678,7 @@ html[data-theme="dark"] .logo-img-dark {
   background: linear-gradient(90deg, var(--accent, #c9a227), #e08a6a);
   border-radius: 99px;
   min-width: 0;
-  transition: width 0.35s ease;
+  transition: width 0.5s ease-out;
 }
 .card-bar-fill.kind-charity,
 .bar-fill.kind-charity {
@@ -1058,6 +1058,11 @@ a.disabled-link {
   font-weight: 500;
   font-size: 0.78rem;
   color: var(--muted);
+}
+.card-pct {
+  font-weight: 700;
+  color: var(--earth, #917347);
+  font-variant-numeric: tabular-nums;
 }
 .card-addr {
   font-size: 0.72rem;
@@ -1717,4 +1722,5 @@ html[data-theme="dark"] .detail-cover {
 }
 @media (prefers-reduced-motion: reduce) {
   .slam, .celebrate-overlay { animation: none; }
+  .card-bar-fill { transition: none; }
 }
