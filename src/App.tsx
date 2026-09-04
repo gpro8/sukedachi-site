@@ -2163,8 +2163,9 @@ export default function App() {
       addr: a,
       kind: (kinds[i] === "unknown" ? "crowdfund" : kinds[i]) as Kind,
       idx: i,
+      created: indices[i] ?? i,
     }));
-  }, [addresses, kinds]);
+  }, [addresses, kinds, indices]);
 
   const filterCounts = useMemo(() => {
     let open = 0;
@@ -2189,17 +2190,21 @@ export default function App() {
       const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
       return isLotCompleted(row.kind, st, d, now);
     };
+    const newerFirst = (
+      a: (typeof listRows)[number],
+      b: (typeof listRows)[number]
+    ) => b.created - a.created;
     const byDeadlineThenNew = (
       a: (typeof listRows)[number],
       b: (typeof listRows)[number]
     ) => {
       const da = deadlineOf(a.idx);
       const db = deadlineOf(b.idx);
-      if (!da && !db) return b.idx - a.idx;
+      if (!da && !db) return newerFirst(a, b);
       if (!da) return 1;
       if (!db) return -1;
       if (da !== db) return da - db;
-      return b.idx - a.idx;
+      return newerFirst(a, b);
     };
 
     const rows = listRows.filter((row) => {
@@ -2213,12 +2218,12 @@ export default function App() {
         const bDone = doneOf(b);
         if (aDone !== bDone) return aDone ? 1 : -1;
         if (!aDone) return byDeadlineThenNew(a, b);
-        return b.idx - a.idx;
+        return newerFirst(a, b);
       }
-      if (listFilter === "done") return b.idx - a.idx;
-      if (listSort === "old") return a.idx - b.idx;
+      if (listFilter === "done") return newerFirst(a, b);
+      if (listSort === "old") return a.created - b.created;
       if (listSort === "deadline") return byDeadlineThenNew(a, b);
-      return b.idx - a.idx;
+      return newerFirst(a, b);
     });
   }, [listRows, statusProbe, listFilter, listSort, now]);
 
