@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <!-- 七宝つなぎ · visible but soft on 白橡 -->
+  <g fill="none" stroke="#917347" stroke-width="1.55" stroke-opacity="0.38">
+    <circle cx="0" cy="0" r="28.28"/>
+    <circle cx="40" cy="0" r="28.28"/>
+    <circle cx="80" cy="0" r="28.28"/>
+    <circle cx="0" cy="40" r="28.28"/>
+    <circle cx="40" cy="40" r="28.28"/>
+    <circle cx="80" cy="40" r="28.28"/>
+    <circle cx="0" cy="80" r="28.28"/>
+    <circle cx="40" cy="80" r="28.28"/>
+    <circle cx="80" cy="80" r="28.28"/>
+  </g>
+</svg>
