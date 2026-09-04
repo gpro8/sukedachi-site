@@ -858,10 +858,17 @@ a.disabled-link {
   color: var(--accent);
   text-decoration: underline;
 }
+.list-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin: 0.5rem 0 0.9rem;
+}
 .list-filter {
   display: flex;
   gap: 0.4rem;
-  margin: 0.5rem 0 0.9rem;
 }
 .list-filter button {
   border: 1px solid var(--border);
@@ -872,10 +879,35 @@ a.disabled-link {
   cursor: pointer;
   color: var(--text);
 }
+.list-filter button .n {
+  font-weight: 500;
+  opacity: 0.72;
+  margin-left: 0.28rem;
+}
 .list-filter button.on {
   background: var(--accent, #c9a227);
   border-color: transparent;
   color: var(--on-accent);
+}
+.list-filter button.on .n {
+  opacity: 0.9;
+}
+.list-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.list-sort select {
+  border: 1px solid var(--border);
+  background: var(--btn-face);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  font-weight: 600;
+  font-size: 0.82rem;
 }
 .modal-backdrop {
   position: fixed;

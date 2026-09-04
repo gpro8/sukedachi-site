@@ -1342,26 +1342,36 @@ function ContribRow({
   );
 }
 
+type ListFilter = "all" | "open" | "done";
+type ListSort = "new" | "old" | "deadline";
+
 function EmptyListPanel({
   mode,
   totalCampaigns,
   onCreate,
   onFaq,
   onShowDone,
+  onShowAll,
 }: {
-  mode: "open" | "done";
+  mode: ListFilter;
   totalCampaigns: number;
   onCreate: () => void;
   onFaq: () => void;
   onShowDone: () => void;
+  onShowAll: () => void;
 }) {
   if (mode === "done") {
     return (
       <div className="empty-panel surface">
         <h3>完了した旗はまだありません</h3>
         <p className="hint">
-          締切後や精算済みの旗がここに並びます。募集中の旗は「募集中」タブをご覧ください。
+          締切後や精算済みの旗がここに並びます。すべての旗は「全て」から見られます。
         </p>
+        <div className="empty-actions">
+          <button type="button" className="btn ghost" onClick={onShowAll}>
+            全てを見る
+          </button>
+        </div>
       </div>
     );
   }
@@ -1371,11 +1381,14 @@ function EmptyListPanel({
       <div className="empty-panel surface">
         <h3>いま募集中の旗はありません</h3>
         <p className="hint">
-          締切済み・完了の旗は「完了・履歴」にあります。新しい旗が立つとここに表示されます。
+          締切済み・完了の旗は「完了」にあります。これまでの旗は「全て」で一覧できます。
         </p>
         <div className="empty-actions">
+          <button type="button" className="btn ghost" onClick={onShowAll}>
+            全てを見る
+          </button>
           <button type="button" className="btn ghost" onClick={onShowDone}>
-            完了・履歴を見る
+            完了を見る
           </button>
           <button type="button" className="btn primary" onClick={onCreate}>
             旗を揚げる
@@ -2106,7 +2119,8 @@ export default function App() {
     null
   );
   const [tab, setTab] = useState<"list" | "create" | "me" | "faq">("list");
-  const [listFilter, setListFilter] = useState<"open" | "done">("open");
+  const [listFilter, setListFilter] = useState<ListFilter>("all");
+  const [listSort, setListSort] = useState<ListSort>("new");
   const [justCreated, setJustCreated] = useState<CreateSuccessInfo | null>(null);
   const now = useNow();
   const { profile: myProfile } = useProfile(address);
@@ -2144,21 +2158,50 @@ export default function App() {
     query: { enabled: addresses.length > 0, refetchInterval: 15_000 },
   });
 
-  const filtered = useMemo(() => {
-    return addresses
-      .map((a, i) => ({
-        addr: a,
-        kind: (kinds[i] === "unknown" ? "crowdfund" : kinds[i]) as Kind,
-        idx: i,
-      }))
-      .filter((row) => {
-        if (!statusProbe) return listFilter === "open";
+  const listRows = useMemo(() => {
+    return addresses.map((a, i) => ({
+      addr: a,
+      kind: (kinds[i] === "unknown" ? "crowdfund" : kinds[i]) as Kind,
+      idx: i,
+    }));
+  }, [addresses, kinds]);
+
+  const filterCounts = useMemo(() => {
+    let open = 0;
+    let done = 0;
+    if (statusProbe) {
+      for (const row of listRows) {
         const d = Number(statusProbe[row.idx * 2]?.result ?? 0n);
         const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
-        const done = isLotCompleted(row.kind, st, d, now);
-        return listFilter === "done" ? done : !done;
-      });
-  }, [addresses, kinds, statusProbe, listFilter, now]);
+        if (isLotCompleted(row.kind, st, d, now)) done += 1;
+        else open += 1;
+      }
+    }
+    return { all: listRows.length, open, done };
+  }, [listRows, statusProbe, now]);
+
+  const filtered = useMemo(() => {
+    const rows = listRows.filter((row) => {
+      if (listFilter === "all") return true;
+      if (!statusProbe) return listFilter === "open";
+      const d = Number(statusProbe[row.idx * 2]?.result ?? 0n);
+      const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
+      const done = isLotCompleted(row.kind, st, d, now);
+      return listFilter === "done" ? done : !done;
+    });
+    return rows.sort((a, b) => {
+      if (listSort === "old") return a.idx - b.idx;
+      if (listSort === "deadline") {
+        const da = Number(statusProbe?.[a.idx * 2]?.result ?? 0n);
+        const db = Number(statusProbe?.[b.idx * 2]?.result ?? 0n);
+        if (!da && !db) return b.idx - a.idx;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da - db;
+      }
+      return b.idx - a.idx;
+    });
+  }, [listRows, statusProbe, listFilter, listSort, now]);
 
   const selectedKind: Kind = useMemo(() => {
     if (selectedKindOverride) return selectedKindOverride;
@@ -2415,21 +2458,50 @@ export default function App() {
             <strong>皆済</strong>は目標未達なら返金、
             <strong>義援</strong>は期間内の All-in です。
           </p>
-          <div className="list-filter">
-            <button
-              type="button"
-              className={listFilter === "open" ? "on" : ""}
-              onClick={() => setListFilter("open")}
-            >
-              募集中
-            </button>
-            <button
-              type="button"
-              className={listFilter === "done" ? "on" : ""}
-              onClick={() => setListFilter("done")}
-            >
-              完了・履歴
-            </button>
+          <div className="list-filter-row">
+            <div className="list-filter" role="tablist" aria-label="旗の表示">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={listFilter === "all"}
+                className={listFilter === "all" ? "on" : ""}
+                onClick={() => setListFilter("all")}
+              >
+                全て
+                <span className="n">{filterCounts.all}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={listFilter === "open"}
+                className={listFilter === "open" ? "on" : ""}
+                onClick={() => setListFilter("open")}
+              >
+                募集中
+                {statusProbe ? <span className="n">{filterCounts.open}</span> : null}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={listFilter === "done"}
+                className={listFilter === "done" ? "on" : ""}
+                onClick={() => setListFilter("done")}
+              >
+                完了
+                {statusProbe ? <span className="n">{filterCounts.done}</span> : null}
+              </button>
+            </div>
+            <label className="list-sort">
+              並び
+              <select
+                value={listSort}
+                onChange={(e) => setListSort(e.target.value as ListSort)}
+              >
+                <option value="new">新しい順</option>
+                <option value="old">古い順</option>
+                <option value="deadline">締切が近い順</option>
+              </select>
+            </label>
           </div>
           {filtered.length === 0 ? (
             <EmptyListPanel
@@ -2438,6 +2510,7 @@ export default function App() {
               onCreate={() => setTab("create")}
               onFaq={() => setTab("faq")}
               onShowDone={() => setListFilter("done")}
+              onShowAll={() => setListFilter("all")}
             />
           ) : (
             <div className="grid">
