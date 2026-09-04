@@ -2181,24 +2181,43 @@ export default function App() {
   }, [listRows, statusProbe, now]);
 
   const filtered = useMemo(() => {
+    const deadlineOf = (idx: number) =>
+      Number(statusProbe?.[idx * 2]?.result ?? 0n);
+    const doneOf = (row: (typeof listRows)[number]) => {
+      if (!statusProbe) return false;
+      const d = deadlineOf(row.idx);
+      const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
+      return isLotCompleted(row.kind, st, d, now);
+    };
+    const byDeadlineThenNew = (
+      a: (typeof listRows)[number],
+      b: (typeof listRows)[number]
+    ) => {
+      const da = deadlineOf(a.idx);
+      const db = deadlineOf(b.idx);
+      if (!da && !db) return b.idx - a.idx;
+      if (!da) return 1;
+      if (!db) return -1;
+      if (da !== db) return da - db;
+      return b.idx - a.idx;
+    };
+
     const rows = listRows.filter((row) => {
       if (listFilter === "all") return true;
       if (!statusProbe) return listFilter === "open";
-      const d = Number(statusProbe[row.idx * 2]?.result ?? 0n);
-      const st = Number(statusProbe[row.idx * 2 + 1]?.result ?? 0);
-      const done = isLotCompleted(row.kind, st, d, now);
-      return listFilter === "done" ? done : !done;
+      return listFilter === "done" ? doneOf(row) : !doneOf(row);
     });
     return rows.sort((a, b) => {
-      if (listSort === "old") return a.idx - b.idx;
-      if (listSort === "deadline") {
-        const da = Number(statusProbe?.[a.idx * 2]?.result ?? 0n);
-        const db = Number(statusProbe?.[b.idx * 2]?.result ?? 0n);
-        if (!da && !db) return b.idx - a.idx;
-        if (!da) return 1;
-        if (!db) return -1;
-        return da - db;
+      if (listFilter === "all") {
+        const aDone = doneOf(a);
+        const bDone = doneOf(b);
+        if (aDone !== bDone) return aDone ? 1 : -1;
+        if (!aDone) return byDeadlineThenNew(a, b);
+        return b.idx - a.idx;
       }
+      if (listFilter === "done") return b.idx - a.idx;
+      if (listSort === "old") return a.idx - b.idx;
+      if (listSort === "deadline") return byDeadlineThenNew(a, b);
       return b.idx - a.idx;
     });
   }, [listRows, statusProbe, listFilter, listSort, now]);
@@ -2491,17 +2510,19 @@ export default function App() {
                 {statusProbe ? <span className="n">{filterCounts.done}</span> : null}
               </button>
             </div>
-            <label className="list-sort">
-              並び
-              <select
-                value={listSort}
-                onChange={(e) => setListSort(e.target.value as ListSort)}
-              >
-                <option value="new">新しい順</option>
-                <option value="old">古い順</option>
-                <option value="deadline">締切が近い順</option>
-              </select>
-            </label>
+            {listFilter === "open" ? (
+              <label className="list-sort">
+                並び
+                <select
+                  value={listSort}
+                  onChange={(e) => setListSort(e.target.value as ListSort)}
+                >
+                  <option value="new">新しい順</option>
+                  <option value="old">古い順</option>
+                  <option value="deadline">締切が近い順</option>
+                </select>
+              </label>
+            ) : null}
           </div>
           {filtered.length === 0 ? (
             <EmptyListPanel
