@@ -9,6 +9,7 @@ import {
   useWaitForTransactionReceipt,
   useSwitchChain,
 } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
 import { formatUnits, parseUnits, decodeEventLog, zeroAddress, type Address, type Log } from "viem";
 import {
   CHAIN,
@@ -27,6 +28,7 @@ import {
   arweaveToHttp,
   shortAddr,
 } from "./config";
+import { wagmiConfig } from "./wagmi";
 import {
   buildMetadataDataUri,
   parseMetadataUri,
@@ -527,13 +529,18 @@ function DetailPanel({
     };
   }, [uri]);
 
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
+  const { writeContract, writeContractAsync, data: txHash, isPending, reset } =
+    useWriteContract();
   const { isLoading: confirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
+  const contributeBusy = useRef(false);
+  const [contributing, setContributing] = useState(false);
+
   useEffect(() => {
     if (isSuccess) {
+      if (contributeBusy.current) return;
       setStatus("確認済み");
       refetch();
       setContribKey((k) => k + 1);
@@ -556,24 +563,9 @@ function DetailPanel({
     }
   }, [amount]);
 
-  const onApprove = async () => {
-    try {
-      setStatus(null);
-      await ensure();
-      writeContract({
-        address: JPYC_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: "approve",
-        args: [address, amountWei],
-        chainId: CHAIN.id,
-      } as any);
-      setStatus("承認中…");
-    } catch (e) {
-      setStatus(e instanceof Error ? e.message : "エラー");
-    }
-  };
-
-  const onPledgeOrDonate = async () => {
+  const onContribute = async () => {
+    const verb = kind === "charity" ? "JPYCで義援する" : "JPYCで加勢する";
+    let approvedMined = false;
     try {
       setStatus(null);
       await ensure();
@@ -581,16 +573,46 @@ function DetailPanel({
         setStatus("金額を入力してください");
         return;
       }
-      writeContract({
+      contributeBusy.current = true;
+      setContributing(true);
+      const amt = amountWei;
+      if (needApprove) {
+        setStatus("承認中…（1/2）");
+        const hash1 = await writeContractAsync({
+          address: JPYC_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [address, amt],
+          chainId: CHAIN.id,
+        } as any);
+        await waitForTransactionReceipt(wagmiConfig, { hash: hash1 });
+        approvedMined = true;
+        setStatus(
+          kind === "charity" ? "承認済み。義援します…" : "承認済み。加勢します…"
+        );
+      }
+      setStatus(kind === "charity" ? "義援送信中…" : "加勢送信中…");
+      const hash2 = await writeContractAsync({
         address,
         abi,
         functionName: kind === "charity" ? "donate" : "pledge",
-        args: [amountWei],
+        args: [amt],
         chainId: CHAIN.id,
       } as any);
-      setStatus(kind === "charity" ? "義援送信中…" : "加勢送信中…");
+      await waitForTransactionReceipt(wagmiConfig, { hash: hash2 });
+      setStatus("確認済み");
+      refetch();
+      setContribKey((k) => k + 1);
+      reset();
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "エラー");
+      if (approvedMined) {
+        setStatus(`承認は済。もう一度「${verb}」`);
+      } else {
+        setStatus(friendlyTxError(e));
+      }
+    } finally {
+      contributeBusy.current = false;
+      setContributing(false);
     }
   };
 
@@ -885,23 +907,16 @@ function DetailPanel({
               placeholder="100"
             />
           </div>
-          {needApprove ? (
-            <button
-              className="btn primary wide"
-              disabled={isPending || confirming}
-              onClick={onApprove}
-            >
-              {TOKEN_SYMBOL} を承認
-            </button>
-          ) : (
-            <button
-              className="btn primary wide"
-              disabled={isPending || confirming}
-              onClick={onPledgeOrDonate}
-            >
-              {kind === "charity" ? "義援する" : "加勢する"}
-            </button>
-          )}
+          <button
+            className="btn primary wide"
+            disabled={isPending || confirming || contributing}
+            onClick={onContribute}
+          >
+            {kind === "charity" ? "JPYCで義援する" : "JPYCで加勢する"}
+          </button>
+          <p className="field-hint">
+            ウォレットが最大2回開きます（承認 → 送信）。承認済みなら1回です。
+          </p>
         </div>
       )}
 
