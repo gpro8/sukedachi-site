@@ -145,7 +145,7 @@ export function ContributeThanks({
       <div className="celebrate-burst" />
       <div className="celebrate-card thanks-card" onClick={(e) => e.stopPropagation()}>
         <HankoStamp className="hanko-xl slam" label="礼" />
-        <p className="celebrate-kicker">ありがとう</p>
+        <p className="celebrate-kicker">ありがとうございます</p>
         <p className="celebrate-pct thanks-line">{noun}が旗に届きました</p>
         <p className="celebrate-sub">
           {kind === "charity"
