@@ -115,3 +115,47 @@ export function CelebrateOverlay({
     </div>
   );
 }
+
+/** After a successful 加勢 / 義援 — dismiss by click or wait. */
+export function ContributeThanks({
+  open,
+  kind,
+  onClose,
+}: {
+  open: boolean;
+  kind: "crowdfund" | "charity";
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(onClose, 4800);
+    return () => window.clearTimeout(t);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const noun = kind === "charity" ? "義援" : "加勢";
+  return (
+    <div
+      className="thanks-overlay"
+      role="dialog"
+      aria-label={`${noun}が旗に届きました`}
+      onClick={onClose}
+    >
+      <div className="celebrate-burst" />
+      <div className="celebrate-card thanks-card" onClick={(e) => e.stopPropagation()}>
+        <HankoStamp className="hanko-xl slam" label="礼" />
+        <p className="celebrate-kicker">ありがとう</p>
+        <p className="celebrate-pct thanks-line">{noun}が旗に届きました</p>
+        <p className="celebrate-sub">
+          {kind === "charity"
+            ? "あなたの義援が、この旗を厚くします"
+            : "あなたの加勢が、この旗を厚くします"}
+        </p>
+        <button type="button" className="btn primary" onClick={onClose}>
+          閉じる
+        </button>
+      </div>
+    </div>
+  );
+}

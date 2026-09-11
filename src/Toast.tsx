@@ -9,23 +9,27 @@ type ToastItem = {
   tone: ToastTone;
 };
 
-let pushToastExternal: ((message: string, tone?: ToastTone) => void) | null =
+let pushToastExternal: ((message: string, tone?: ToastTone, ms?: number) => void) | null =
   null;
 
 /** Call from any component — shows a floating toast (mobile-safe). */
-export function showToast(message: string, tone: ToastTone = "ok") {
-  if (pushToastExternal) pushToastExternal(message, tone);
+export function showToast(
+  message: string,
+  tone: ToastTone = "ok",
+  ms = 2800
+) {
+  if (pushToastExternal) pushToastExternal(message, tone, ms);
 }
 
 export function ToastHost() {
   const [items, setItems] = useState<ToastItem[]>([]);
 
-  const push = useCallback((message: string, tone: ToastTone = "ok") => {
+  const push = useCallback((message: string, tone: ToastTone = "ok", ms = 2800) => {
     const id = Date.now() + Math.floor(Math.random() * 1000);
     setItems((prev) => [...prev.slice(-3), { id, message, tone }]);
     window.setTimeout(() => {
       setItems((prev) => prev.filter((t) => t.id !== id));
-    }, 2800);
+    }, ms);
   }, []);
 
   useEffect(() => {

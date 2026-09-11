@@ -1752,7 +1752,34 @@ html[data-theme="dark"] .detail-cover {
   0%, 72% { opacity: 1; }
   100% { opacity: 0; }
 }
+.thanks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(31, 49, 52, 0.42);
+  animation: cele-fade 4.8s ease forwards;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.thanks-card {
+  pointer-events: auto;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.thanks-card .btn {
+  margin-top: 0.85rem;
+  min-width: 8rem;
+}
+.thanks-line {
+  font-size: 1.15rem;
+  letter-spacing: 0.02em;
+}
 @media (prefers-reduced-motion: reduce) {
-  .slam, .celebrate-overlay { animation: none; }
+  .slam, .celebrate-overlay, .thanks-overlay { animation: none; }
   .card-bar-fill { transition: none; }
 }

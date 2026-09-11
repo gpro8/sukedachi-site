@@ -41,6 +41,7 @@ import {
 import { SafeImage } from "./SafeImage";
 import {
   CelebrateOverlay,
+  ContributeThanks,
   HankoStamp,
   charityWarmthPct,
   overGoalPct,
@@ -518,6 +519,9 @@ function DetailPanel({
   const [amount, setAmount] = useState("100");
   const [status, setStatus] = useState<string | null>(null);
   const [contribKey, setContribKey] = useState(0);
+  const [thanksOpen, setThanksOpen] = useState(false);
+  const [retrySend, setRetrySend] = useState(false);
+  const closeThanks = useCallback(() => setThanksOpen(false), []);
 
   useEffect(() => {
     let c = false;
@@ -564,10 +568,10 @@ function DetailPanel({
   }, [amount]);
 
   const onContribute = async () => {
-    const verb = kind === "charity" ? "JPYCで義援する" : "JPYCで加勢する";
     let approvedMined = false;
     try {
       setStatus(null);
+      setRetrySend(false);
       await ensure();
       if (amountWei <= 0n) {
         setStatus("金額を入力してください");
@@ -600,13 +604,21 @@ function DetailPanel({
         chainId: CHAIN.id,
       } as any);
       await waitForTransactionReceipt(wagmiConfig, { hash: hash2 });
-      setStatus("確認済み");
+      setRetrySend(false);
+      setStatus("届きました");
+      setThanksOpen(true);
+      showToast(
+        kind === "charity" ? "義援が旗に届きました" : "加勢が旗に届きました",
+        "ok",
+        4200
+      );
       refetch();
       setContribKey((k) => k + 1);
       reset();
     } catch (e) {
       if (approvedMined) {
-        setStatus(`承認は済。もう一度「${verb}」`);
+        setRetrySend(true);
+        setStatus("承認済 もう一度署名で送信");
       } else {
         setStatus(friendlyTxError(e));
       }
@@ -689,6 +701,11 @@ function DetailPanel({
       {hit && (
         <CelebrateOverlay id={address} play pctLabel={pctLabel} />
       )}
+      <ContributeThanks
+        open={thanksOpen}
+        kind={kind === "charity" ? "charity" : "crowdfund"}
+        onClose={closeThanks}
+      />
       <button type="button" className="linkish" onClick={onBack}>
         ← 一覧
       </button>
@@ -912,7 +929,11 @@ function DetailPanel({
             disabled={isPending || confirming || contributing}
             onClick={onContribute}
           >
-            {kind === "charity" ? "JPYCで義援する" : "JPYCで加勢する"}
+            {retrySend
+              ? "承認済 もう一度署名で送信"
+              : kind === "charity"
+                ? "JPYCで義援する"
+                : "JPYCで加勢する"}
           </button>
           <p className="field-hint">
             ウォレットが最大2回開きます（承認 → 送信）。承認済みなら1回です。
