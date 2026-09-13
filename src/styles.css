@@ -1421,6 +1421,19 @@ a.disabled-link {
   font-size: 0.78rem;
 }
 
+.input-wrap.is-error input {
+  border-color: #9b2c2c;
+}
+.input-wrap.is-shaking {
+  animation: t-input-shake 280ms linear;
+}
+@keyframes t-input-shake {
+  0% { transform: translateX(0); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  28.57% { transform: translateX(6px); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  57.14% { transform: translateX(-6px); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  78.57% { transform: translateX(4px); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  100% { transform: translateX(0); }
+}
 .input-wrap input,
 .field input,
 .field textarea {
@@ -1782,4 +1795,5 @@ html[data-theme="dark"] .detail-cover {
 @media (prefers-reduced-motion: reduce) {
   .slam, .celebrate-overlay, .thanks-overlay { animation: none; }
   .card-bar-fill { transition: none; }
+  .input-wrap.is-shaking { animation: none !important; transform: none !important; }
 }

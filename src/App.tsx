@@ -521,7 +521,14 @@ function DetailPanel({
   const [contribKey, setContribKey] = useState(0);
   const [thanksOpen, setThanksOpen] = useState(false);
   const [retrySend, setRetrySend] = useState(false);
+  const [contribShake, setContribShake] = useState(false);
   const closeThanks = useCallback(() => setThanksOpen(false), []);
+  const pulseContribShake = useCallback(() => {
+    setContribShake(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setContribShake(true));
+    });
+  }, []);
 
   useEffect(() => {
     let c = false;
@@ -575,6 +582,7 @@ function DetailPanel({
       await ensure();
       if (amountWei <= 0n) {
         setStatus("金額を入力してください");
+        pulseContribShake();
         return;
       }
       contributeBusy.current = true;
@@ -621,6 +629,7 @@ function DetailPanel({
         setStatus("承認済 もう一度署名で送信");
       } else {
         setStatus(friendlyTxError(e));
+        pulseContribShake();
       }
     } finally {
       contributeBusy.current = false;
@@ -916,10 +925,17 @@ function DetailPanel({
               残高 {bal != null ? formatUnits(bal as bigint, 18) : "—"}
             </span>
           </div>
-          <div className="input-wrap">
+          <div
+            className={
+              "input-wrap" + (contribShake ? " is-error is-shaking" : "")
+            }
+          >
             <input
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                setContribShake(false);
+                setAmount(e.target.value);
+              }}
               inputMode="decimal"
               placeholder="100"
             />
