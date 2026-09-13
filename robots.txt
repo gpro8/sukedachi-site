@@ -1,0 +1,8 @@
+# https://gpro8.github.io/sukedachi-site/robots.txt
+User-agent: *
+Allow: /
+
+# Machine briefing for AI agents
+# https://www.rfc-editor.org/rfc/rfc9309
+# See also llms.txt convention
+Llms-Txt: https://gpro8.github.io/sukedachi-site/llms.txt

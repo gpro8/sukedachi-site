@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>助太刀 · 旗揚げアローリスト提出</title>
+<meta name="description" content="Sukedachi allowlist wallet submission — BushiDAO" />
+<script>
+(function(){try{var t=localStorage.getItem("bushi.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}}catch(e){}})();
+</script>
+<link rel="stylesheet" href="./theme-static.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    color: var(--text);
+    background-color: var(--bg);
+    background-image: url("./patterns/shippo.svg");
+    background-size: 80px 80px;
+    background-repeat: repeat;
+    line-height: 1.55;
+    padding: 2rem 1rem 3rem;
+    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  }
+  .wrap { width: 100%; max-width: 540px; margin: 0 auto; }
+  .top-link {
+    display: inline-block;
+    font-size: 0.88rem;
+    color: var(--earth);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .top-link:hover { color: var(--accent); }
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    color: var(--earth);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  h1 {
+    font-size: 1.55rem;
+    font-weight: 800;
+    margin-bottom: 0.55rem;
+    letter-spacing: 0.02em;
+  }
+  .hero-copy {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem 1.15rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 1.25rem;
+  }
+  .sub {
+    color: var(--text);
+    font-size: 0.92rem;
+    line-height: 1.75;
+    opacity: 0.92;
+  }
+  .sub strong { font-weight: 700; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.4rem 1.5rem;
+    box-shadow: var(--shadow);
+  }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .field { margin-bottom: 1.1rem; }
+  input[type="text"] {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 0.95rem;
+    padding: 0.7rem 0.85rem;
+    outline: none;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(205, 94, 60, 0.12);
+  }
+  input.addr {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.84rem;
+  }
+  input.invalid { border-color: var(--danger); }
+  input.valid { border-color: var(--ok); }
+  .hint-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .status.ok { color: var(--ok); font-weight: 600; }
+  .status.ng { color: var(--danger); font-weight: 600; }
+  .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  button.submit {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 0.85rem;
+    cursor: pointer;
+  }
+  button.submit:hover { background: var(--accent-hover); }
+  button.submit:disabled { opacity: 0.4; cursor: not-allowed; }
+  .msg {
+    margin-top: 0.85rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    display: none;
+  }
+  .msg.show { display: block; }
+  .msg.success {
+    background: rgba(91, 99, 86, 0.1);
+    border: 1px solid rgba(91, 99, 86, 0.35);
+    color: var(--ok);
+  }
+  .msg.error {
+    background: rgba(197, 61, 67, 0.08);
+    border: 1px solid rgba(197, 61, 67, 0.3);
+    color: var(--danger);
+  }
+  .done { text-align: center; padding: 0.5rem 0; display: none; }
+  .done.show { display: block; }
+  .done .check {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(205, 94, 60, 0.12); color: var(--accent);
+    font-size: 1.5rem; display: grid; place-items: center; margin: 0 auto 0.85rem;
+  }
+  .done h2 { font-size: 1.15rem; margin-bottom: 0.45rem; }
+  .done p { color: var(--muted); font-size: 0.88rem; }
+  .addr-chip {
+    display: inline-block; margin-top: 0.85rem; padding: 0.5rem 0.75rem;
+    background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem;
+    color: var(--earth); word-break: break-all;
+  }
+  .note {
+    margin-top: 1rem; padding: 0.75rem 0.9rem; border-radius: 10px;
+    background: rgba(145, 115, 71, 0.08); border: 1px solid var(--border);
+    font-size: 0.82rem; color: var(--muted); line-height: 1.55;
+  }
+  footer {
+    margin-top: 1.5rem; text-align: center; font-size: 0.75rem; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-row">
+    <a class="top-link" href="./">← 助太刀トップ</a>
+    <button type="button" class="theme-toggle-static" id="themeToggle" aria-label="陰モード">陰</button>
+  </div>
+  <div class="hero-copy">
+    <div class="eyebrow">SUKEDACHI · ALLOWLIST</div>
+    <h1>旗揚げアローリスト提出</h1>
+    <p class="sub">
+      メインネット公開初期は<strong>許可ウォレットのみ</strong>が旗を揚げられます。
+      コミュニティメンバーのウォレットを登録申請してください（Polygon · EVM アドレス）。
+      運営が確認後、コントラクトの allowlist に反映します。あとから追加も可能です。
+    </p>
+  </div>
+
+  <div class="card">
+    <div id="formArea">
+      <div class="field">
+        <label for="xname">X（Twitter）ユーザー名</label>
+        <input type="text" id="xname" placeholder="@username" autocomplete="off" maxlength="40" />
+      </div>
+      <div class="field">
+        <label for="discord">Discord ユーザー名</label>
+        <input type="text" id="discord" placeholder="username" autocomplete="off" maxlength="40" />
+      </div>
+      <div class="field">
+        <label for="wallet">ウォレットアドレス（0x… · EVM）</label>
+        <input type="text" id="wallet" class="addr" placeholder="0x…" autocomplete="off" spellcheck="false" />
+        <div class="hint-row">
+          <span class="status" id="addrStatus"></span>
+          <span class="mono" id="addrCount">0 / 42</span>
+        </div>
+      </div>
+      <button type="button" class="submit" id="submitBtn" disabled>提出する</button>
+      <div class="msg" id="msg"></div>
+      <p class="note">提出内容は運営が確認します。結果は Discord / 告知をご覧ください。</p>
+    </div>
+
+    <div class="done" id="doneArea">
+      <div class="check">✓</div>
+      <h2>提出を受け付けました</h2>
+      <p>運営が確認し、アローリストへ反映します。結果は Discord / 告知をお待ちください。</p>
+      <div class="addr-chip" id="doneAddr"></div>
+    </div>
+  </div>
+
+  <footer>助太刀 Sukedachi · BushiDAO</footer>
+</div>
+
+<script src="./theme-static.js"></script>
+<script>
+(function () {
+  var ep = "https://sukedachi-polygon-rpc.bushidao.workers.dev/v1/al";
+
+  var walletEl = document.getElementById("wallet");
+  var xEl = document.getElementById("xname");
+  var dEl = document.getElementById("discord");
+  var btn = document.getElementById("submitBtn");
+  var msg = document.getElementById("msg");
+  var addrStatus = document.getElementById("addrStatus");
+  var addrCount = document.getElementById("addrCount");
+
+  function validAddr(a) {
+    return /^0x[a-fA-F0-9]{40}$/.test(a.trim());
+  }
+
+  function updateState() {
+    var a = walletEl.value.trim();
+    addrCount.textContent = a.length + " / 42";
+    if (!a) {
+      walletEl.className = "addr";
+      addrStatus.textContent = "";
+      addrStatus.className = "status";
+    } else if (validAddr(a)) {
+      walletEl.className = "addr valid";
+      addrStatus.textContent = "✓ 形式OK";
+      addrStatus.className = "status ok";
+    } else {
+      walletEl.className = "addr invalid";
+      addrStatus.textContent = "0x + 16進40文字";
+      addrStatus.className = "status ng";
+    }
+    btn.disabled = !(validAddr(a) && xEl.value.trim() && dEl.value.trim());
+  }
+  [walletEl, xEl, dEl].forEach(function (el) {
+    el.addEventListener("input", updateState);
+  });
+
+  function showMsg(text, type) {
+    msg.textContent = text;
+    msg.className = "msg show " + type;
+  }
+
+  function seenKey(addr) {
+    return "sk.al." + addr.toLowerCase();
+  }
+
+  btn.addEventListener("click", function () {
+    var addr = walletEl.value.trim();
+    if (!validAddr(addr)) return;
+    if (sessionStorage.getItem(seenKey(addr))) {
+      showMsg("このブラウザでは、このアドレスは提出済みです。", "error");
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "送信中…";
+    var x = xEl.value.trim().replace(/^@/, "");
+    var disc = dEl.value.trim();
+
+    fetch(ep, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ x: x, discord: disc, wallet: addr }),
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("fail");
+        sessionStorage.setItem(seenKey(addr), "1");
+        document.getElementById("formArea").style.display = "none";
+        document.getElementById("doneArea").classList.add("show");
+        document.getElementById("doneAddr").textContent = addr;
+      })
+      .catch(function () {
+        showMsg("送信に失敗しました。時間をおいて再度お試しください。", "error");
+        btn.textContent = "提出する";
+        updateState();
+      });
+  });
+})();
+</script>
+</body>
+</html>

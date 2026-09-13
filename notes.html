@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>利用上の注意 · 助太刀 Sukedachi</title>
+<meta name="description" content="助太刀（Sukedachi）利用上の注意 — BushiDAO。スマートコントラクト・JPYC・自己責任について。" />
+<script>
+(function(){try{var t=localStorage.getItem("bushi.theme");if(t==="dark"||t==="light"){document.documentElement.setAttribute("data-theme",t);document.documentElement.style.colorScheme=t;}}catch(e){}})();
+</script>
+<link rel="stylesheet" href="./theme-static.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    color: var(--text);
+    background-color: var(--bg);
+    background-image: url("./patterns/shippo.svg");
+    background-size: 80px 80px;
+    background-repeat: repeat;
+    line-height: 1.7;
+    padding: 2rem 1rem 3.5rem;
+    font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  }
+  .wrap { width: 100%; max-width: 640px; margin: 0 auto; }
+  .top-link {
+    display: inline-block;
+    font-size: 0.88rem;
+    color: var(--earth);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .top-link:hover { color: var(--accent); }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.4rem 1.45rem 1.6rem;
+    box-shadow: var(--shadow);
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    color: var(--earth);
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+  }
+  h1 {
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.02em;
+  }
+  .lede {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-bottom: 1.25rem;
+  }
+  h2 {
+    font-size: 0.98rem;
+    font-weight: 800;
+    margin: 1.25rem 0 0.45rem;
+    color: var(--text);
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  h2:first-of-type { margin-top: 0.35rem; }
+  p, li { font-size: 0.92rem; color: var(--text); }
+  p { margin-bottom: 0.65rem; }
+  ul {
+    margin: 0.35rem 0 0.75rem 1.15rem;
+  }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 700; }
+  .note {
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    background: rgba(145, 115, 71, 0.08);
+    border: 1px solid var(--border);
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+  .foot {
+    margin-top: 1.5rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-row">
+      <a class="top-link" href="./">← 助太刀トップ</a>
+      <button type="button" class="theme-toggle-static" id="themeToggle" aria-label="陰モード">陰</button>
+    </div>
+    <article class="card">
+      <div class="eyebrow">BUSHIDAO · SUKEDACHI</div>
+      <h1>利用上の注意</h1>
+      <p class="lede">
+        助太刀（Sukedachi）をご利用いただく前に、以下をご確認ください。
+        本ページはサービス内容の説明と注意喚起であり、法律上の助言ではありません。
+      </p>
+
+      <h2>1. 運営について</h2>
+      <p>
+        本サービスは <strong>BushiDAO</strong> コミュニティにより提供される、
+        <strong>Polygon 上の JPYC</strong> を用いた旗揚げ（皆済）・義援のための場です。
+        営利の資金仲介業や銀行・資金移動業のサービスではありません。
+      </p>
+
+      <h2>2. 仕組みの要点</h2>
+      <ul>
+        <li><strong>非カストディ</strong> — 運営が皆さまの秘密鍵や JPYC を預かりません。取引は接続したウォレットとスマートコントラクトの間で行われます。</li>
+        <li><strong>皆済（クラウドファンディング型）</strong> — 期限後に目標未達の場合、コントラクトのルールに従い返金を請求できる設計です（手順・ガス代は利用者負担）。</li>
+        <li><strong>義援</strong> — 期間内の支援は原則として返金のない All-in です。</li>
+        <li><strong>旗の作成</strong> — 現在はアローリスト制の場合があります。誰でも加勢・義援できる旗と、作成できる人が限られる場合があります。</li>
+      </ul>
+
+      <h2>3. ご自身でご判断・ご負担いただくこと</h2>
+      <ul>
+        <li>ウォレットの管理（秘密鍵・シードフレーズの紛失・漏洩は復旧できません）。</li>
+        <li>ネットワーク手数料（POL 等）およびトークンの送受信に伴うリスク。</li>
+        <li>スマートコントラクトやブロックチェーンの不具合・遅延・仕様変更により、意図どおりに完了しない可能性。</li>
+        <li>旗の内容・信用・成果は旗手（作成者）側に依存します。運営が個別の旗の内容を保証するものではありません。</li>
+        <li>JPYC および関連サービスの仕様・規制は発行体・法令の変更により変わり得ます。</li>
+      </ul>
+
+      <h2>4. 表示・表現について</h2>
+      <ul>
+        <li>本サイトの説明は、理解のための要約です。最終的な条件は <strong>オンチェーンのコントラクトとトランザクション</strong> が優先されます。</li>
+        <li>「元本保証」「必ず成功」「銀行と同等の保護」といった意味の表現は行いません。</li>
+        <li>投資商品・配当・利息の勧誘を目的としたサービスではありません。</li>
+      </ul>
+
+      <h2>5. 禁止・お控えいただきたい行為</h2>
+      <ul>
+        <li>法令に違反する目的での利用。</li>
+        <li>他人を欺く表示、なりすまし、資金洗浄その他不正行為。</li>
+        <li>サイトやネットワークへの攻撃、過度な負荷をかける行為。</li>
+      </ul>
+
+      <h2>6. 免責（簡潔に）</h2>
+      <p>
+        ブロックチェーン・ウォレット・第三者サービスに起因する損害、利用者間の紛争、
+        表示とオンチェーン状態の一時的な差などについて、運営は法令上許容される範囲で責任を負わないものとします。
+        重要な操作の前に、金額・宛先・ネットワークを必ずご自身で確認してください。
+      </p>
+
+      <h2>7. JPYC について（クレジット・免責）</h2>
+      <p>
+        本サービスは Polygon 上の JPYC を用いますが、
+        <strong>JPYC株式会社による公式コンテンツではありません</strong>。
+        提携・公認・共同開発を意味するものではありません。
+      </p>
+      <ul>
+        <li>「JPYC」は JPYC株式会社の提供するステーブルコインです。</li>
+        <li>JPYC 及び JPYC ロゴは、JPYC株式会社の登録商標です。</li>
+        <li>当サービスでは JPYC での支払い（加勢・義援）が可能です。JPYC（JPY Coin）に対応しています。</li>
+        <li>ロゴを用いる場合は、発行体が公開する正規データを変形・色変更せず用います。</li>
+      </ul>
+      <p>
+        ブランド要素の利用ルールは
+        <a href="https://corporate.jpyc.co.jp/company/presskit" target="_blank" rel="noreferrer">JPYC ガイドライン・プレスキット</a>
+        に従います。
+      </p>
+
+      <h2>8. お問い合わせ</h2>
+      <p>
+        現時点ではフォームを設けていません。BushiDAO のコミュニティ（Discord 等）経由でお問い合わせください。
+        将来、連絡用ページを追加する場合があります。
+      </p>
+
+      <div class="note">
+        最終更新: 2026-08-17 · 内容は予告なく見直すことがあります。
+        ご不明点はコミュニティで確認のうえ、納得できる範囲でのみご利用ください。
+      </div>
+    </article>
+    <p class="foot">助太刀 Sukedachi · BushiDAO · Polygon · JPYC</p>
+  </div>
+<script src="./theme-static.js"></script>
+</body>
+</html>
