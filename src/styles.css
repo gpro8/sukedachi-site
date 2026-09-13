@@ -1091,6 +1091,27 @@ a.disabled-link {
   font-size: 0.78rem;
   color: var(--muted);
 }
+.stat-ico {
+  width: 0.9rem;
+  height: 0.9rem;
+  vertical-align: -0.12em;
+  margin-right: 0.2rem;
+}
+.remain,
+.people-n {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.people-n {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.55rem;
+}
+.bar-labels .people-n {
+  margin-left: 0;
+}
 .card-pct {
   font-weight: 700;
   color: var(--earth, #917347);
@@ -1206,9 +1227,18 @@ a.disabled-link {
 .bar-labels {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
   margin-top: 0.4rem;
   font-size: 0.82rem;
   color: var(--muted);
+}
+.bar-labels-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
 }
 
 .contributors {

@@ -72,9 +72,14 @@ import {
 } from "./faq";
 import { showToast } from "./Toast";
 import { ContributorsBlock } from "./ContributorsBlock";
-import { fetchMyContributions, type MyContribution } from "./contributors";
+import {
+  fetchMyContributions,
+  useContributorCount,
+  type MyContribution,
+} from "./contributors";
 import {
   IconBook,
+  IconClock,
   IconContract,
   IconList,
   IconMoon,
@@ -195,13 +200,27 @@ function useNow() {
   return now;
 }
 
-function fmtLeft(sec: number) {
+function fmtDeadlineDate(unixSec: number) {
+  if (!unixSec) return "";
+  try {
+    return new Intl.DateTimeFormat("ja-JP", {
+      timeZone: "Asia/Tokyo",
+      month: "numeric",
+      day: "numeric",
+    }).format(new Date(unixSec * 1000));
+  } catch {
+    return "";
+  }
+}
+
+function fmtLeft(sec: number, deadlineUnix = 0) {
   if (sec <= 0) return "終了";
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d}日 ${h}時間`;
-  return `${h}時間 ${m}分`;
+  const left = d > 0 ? `${d}日 ${h}時間` : `${h}時間 ${m}分`;
+  const date = fmtDeadlineDate(deadlineUnix);
+  return date ? `残り ${left} · ${date}` : `残り ${left}`;
 }
 
 function resolveImageUrl(uri?: string): string {
@@ -438,7 +457,10 @@ function CampaignCard({
               )}
             </span>
           </span>
-          <span className="muted">{fmtLeft(deadline - now)}</span>
+          <span className="muted remain">
+            <IconClock className="stat-ico" />
+            {fmtLeft(deadline - now, deadline)}
+          </span>
         </div>
         <div className="card-addr">{shortAddr(address)}</div>
       </div>
@@ -522,6 +544,11 @@ function DetailPanel({
   const [thanksOpen, setThanksOpen] = useState(false);
   const [retrySend, setRetrySend] = useState(false);
   const [contribShake, setContribShake] = useState(false);
+  const peopleN = useContributorCount(
+    address,
+    kind === "unknown" ? "crowdfund" : kind,
+    contribKey
+  );
   const closeThanks = useCallback(() => setThanksOpen(false), []);
   const pulseContribShake = useCallback(() => {
     setContribShake(false);
@@ -827,10 +854,23 @@ function DetailPanel({
               <> · {raised > 0n ? "義援中" : "最初の一枚を"}</>
             )}
           </span>
-          <span>
-            {lotStatus.tone === "closed"
-              ? "受付終了"
-              : fmtLeft(deadline - now)}
+          <span className="bar-labels-right">
+            <span className="remain">
+              {lotStatus.tone === "closed" ? (
+                "受付終了"
+              ) : (
+                <>
+                  <IconClock className="stat-ico" />
+                  {fmtLeft(deadline - now, deadline)}
+                </>
+              )}
+            </span>
+            {peopleN != null && (
+              <span className="people-n">
+                <IconUser className="stat-ico" />
+                {peopleN}人
+              </span>
+            )}
           </span>
         </div>
         {charityOpen && (

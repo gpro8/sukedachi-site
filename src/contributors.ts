@@ -2,6 +2,7 @@
  * Contributors via CF Worker /contributors (Alchemy key never in browser).
  * Falls back to multi-RPC client scan only if worker fails.
  */
+import { useEffect, useState } from "react";
 import type { Address } from "viem";
 import { emptyProfile, type UserProfile } from "./profile";
 import { RPC_URL } from "./config";
@@ -142,6 +143,30 @@ export async function fetchContributors(
   } catch (e) {
     throw friendlyError(e);
   }
+}
+
+/** One campaign only — never N× this from the list cards. */
+export function useContributorCount(
+  campaign: Address | undefined,
+  kind: "crowdfund" | "charity" | "unknown",
+  refreshKey = 0
+): number | null {
+  const [n, setN] = useState<number | null>(null);
+  useEffect(() => {
+    if (!campaign || kind === "unknown") return;
+    let c = false;
+    fetchContributors(campaign, kind)
+      .then((rows) => {
+        if (!c) setN(rows.length);
+      })
+      .catch(() => {
+        if (!c) setN(null);
+      });
+    return () => {
+      c = true;
+    };
+  }, [campaign, kind, refreshKey]);
+  return n;
 }
 
 export type MyContribution = {

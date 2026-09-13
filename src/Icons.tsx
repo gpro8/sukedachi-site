@@ -133,3 +133,13 @@ export function IconMoon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Remaining time */
+export function IconClock({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 8.5V12l2.4 1.6" />
+    </svg>
+  );
+}
